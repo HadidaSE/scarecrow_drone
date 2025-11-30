@@ -11,6 +11,8 @@ build/
 *.pyo
 __pycache__/
 
+*.jpg
+*.avi
 # Virtual environments
 venv/
 env/
