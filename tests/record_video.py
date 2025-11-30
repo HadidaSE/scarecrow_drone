@@ -2,10 +2,10 @@
 # -*- coding: utf-8 -*-
 
 import cv2
-import time
 import sys
+import time
 
-print "=== Intel Aero Camera Test ==="
+print "=== Intel Aero Camera - Video Recording ==="
 
 # Use GStreamer pipeline for Intel RealSense camera
 gst_pipeline = (
@@ -15,11 +15,11 @@ gst_pipeline = (
     "appsink"
 )
 
-print "Opening camera with GStreamer..."
+print "Opening camera..."
 camera = cv2.VideoCapture(gst_pipeline, cv2.CAP_GSTREAMER)
 
 if not camera.isOpened():
-    print "ERROR: Cannot open camera with GStreamer pipeline"
+    print "ERROR: Cannot open camera"
     sys.exit(1)
 
 # Test reading a frame to get actual dimensions
@@ -34,31 +34,39 @@ if not ret:
 height, width = frame.shape[:2]
 
 print "Frame captured successfully!"
-cv2.imwrite('/home/root/camera_frame.jpg', frame)
-print "Saved test frame to: /home/root/camera_frame.jpg"
-
 print "\n=== CAMERA INFO ==="
 print "Device: /dev/video13 (Intel RealSense)"
 print "Resolution: %dx%d" % (width, height)
 
-# Record a short test video
-print "\nRecording 5 second test video..."
+# Record video
+print "\nRecording 10 second video..."
+
+# Use fixed filename
+filename = "/home/root/test_vid.avi"
 
 # Use MJPG codec which is more compatible
 fourcc = cv2.VideoWriter_fourcc(*'MJPG')
-# Match the recording fps to capture fps (30 instead of 20)
-out = cv2.VideoWriter('/home/root/camera_test.avi', fourcc, 30.0, (width, height))
+# Match the recording fps to capture fps (30)
+out = cv2.VideoWriter(filename, fourcc, 30.0, (width, height))
 
 if not out.isOpened():
     print "ERROR: Failed to open video writer"
     camera.release()
     sys.exit(1)
 
+# Recording parameters
+duration = 10  # seconds
+
 start_time = time.time()
 frame_count = 0
 
+print "\n=== RECORDING ==="
+print "Duration: %d seconds" % duration
+print "Press Ctrl+C to stop early"
+print "Recording started..."
+
 try:
-    while (time.time() - start_time) < 5:
+    while (time.time() - start_time) < duration:
         ret, frame = camera.read()
         if ret:
             # Verify frame has correct dimensions
@@ -66,7 +74,8 @@ try:
                 out.write(frame)
                 frame_count += 1
                 if frame_count % 30 == 0:
-                    print "Recording... %d seconds" % int(time.time() - start_time)
+                    elapsed = int(time.time() - start_time)
+                    print "Recording... %d seconds" % elapsed
             else:
                 print "WARNING: Frame size mismatch: %dx%d" % (frame.shape[1], frame.shape[0])
         else:
@@ -74,15 +83,18 @@ try:
 except Exception as e:
     print "ERROR during recording: %s" % str(e)
 finally:
-    # Properly release resources - THIS IS CRITICAL
+    # Properly release resources
     print "\nReleasing camera and video writer..."
     camera.release()
     out.release()
     cv2.destroyAllWindows()
-
-print "\n=== RESULTS ==="
-print "Frames captured: %d" % frame_count
-print "Expected frames: ~150 (30 fps x 5 seconds)"
-print "Video saved to: /home/root/camera_test.avi"
-print "Camera access: SUCCESS"
-print "\nDone!"
+    
+    actual_duration = time.time() - start_time
+    
+    print "\n=== RESULTS ==="
+    print "Frames captured: %d" % frame_count
+    print "Expected frames: ~300 (30 fps x 10 seconds)"
+    print "Video saved to: %s" % filename
+    print "Duration: %.1f seconds" % actual_duration
+    print "Resolution: %dx%d" % (width, height)
+    print "\nDone!"
