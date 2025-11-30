@@ -1,0 +1,32 @@
+# Python packages and distributions
+dronekit_packages/
+*.whl
+*.tar.gz
+*.egg-info/
+dist/
+build/
+
+# Python compiled files
+*.pyc
+*.pyo
+__pycache__/
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
