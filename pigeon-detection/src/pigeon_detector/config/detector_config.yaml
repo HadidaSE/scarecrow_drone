@@ -1,0 +1,31 @@
+# Pigeon Detector Configuration
+
+# Camera settings
+camera:
+  source: "webcam"  # Options: "webcam", "realsense", "image", "video"
+  device_id: 0      # Webcam device ID
+  width: 640        # Frame width (lower for Intel Aero performance)
+  height: 480       # Frame height
+  fps: 30           # Target FPS
+
+# YOLO model settings
+model:
+  weights: "yolov8n.pt"  # Using nano model for Intel Aero's Atom processor
+  confidence_threshold: 0.5
+  iou_threshold: 0.45
+  device: "cpu"     # Use "cpu" for Intel Aero, "cuda" if GPU available
+  img_size: 640     # Inference image size
+
+# Detection settings
+detection:
+  target_class: "bird"  # COCO class to detect (pigeons are detected as "bird")
+  draw_boxes: true
+  draw_confidence: true
+  box_color: [0, 255, 0]  # BGR format
+
+# ROS topics
+ros:
+  input_topic: "/camera/rgb/image_raw"
+  output_topic: "/pigeon_detector/detections"
+  image_output_topic: "/pigeon_detector/image_annotated"
+  publish_rate: 10  # Hz

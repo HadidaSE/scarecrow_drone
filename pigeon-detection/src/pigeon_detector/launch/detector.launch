@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<launch>
+    <!-- Arguments -->
+    <arg name="config_path" default="$(find pigeon_detector)/config/detector_config.yaml"/>
+    <arg name="use_webcam" default="true"/>
+
+    <!-- Camera Node (for development with webcam) -->
+    <node if="$(arg use_webcam)"
+          name="camera_node"
+          pkg="pigeon_detector"
+          type="camera_node.py"
+          output="screen">
+        <param name="config_path" value="$(arg config_path)"/>
+    </node>
+
+    <!-- Pigeon Detector Node -->
+    <node name="pigeon_detector_node"
+          pkg="pigeon_detector"
+          type="detector_node.py"
+          output="screen">
+        <param name="config_path" value="$(arg config_path)"/>
+    </node>
+</launch>
