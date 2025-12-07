@@ -27,6 +27,41 @@ def set_rc_override(master, channels):
     )
 
 
+def check_messages(master, timeout=0.1):
+    """Check for error/status messages from flight controller"""
+    messages = []
+    start_time = time.time()
+    
+    while time.time() - start_time < timeout:
+        msg = master.recv_match(blocking=False)
+        if msg:
+            msg_type = msg.get_type()
+            
+            # Capture important message types
+            if msg_type == 'STATUSTEXT':
+                messages.append("STATUSTEXT: %s" % msg.text)
+                print "[MSG] %s" % msg.text
+            elif msg_type == 'HEARTBEAT':
+                # Check system status
+                if hasattr(msg, 'system_status'):
+                    status = mavutil.mavlink.enums['MAV_STATE'][msg.system_status].name
+                    messages.append("Status: %s" % status)
+            elif msg_type == 'SYS_STATUS':
+                # Check for errors in system status
+                if hasattr(msg, 'errors_count1') and msg.errors_count1 > 0:
+                    messages.append("ERROR: errors_count1 = %d" % msg.errors_count1)
+                    print "[ERROR] Motor/ESC errors detected: %d" % msg.errors_count1
+                if hasattr(msg, 'errors_count2') and msg.errors_count2 > 0:
+                    messages.append("ERROR: errors_count2 = %d" % msg.errors_count2)
+                    print "[ERROR] Additional errors: %d" % msg.errors_count2
+            elif msg_type == 'SERVO_OUTPUT_RAW':
+                # Monitor actual servo/motor outputs
+                outputs = [msg.servo1_raw, msg.servo2_raw, msg.servo3_raw, msg.servo4_raw]
+                messages.append("Motor outputs: %s" % outputs)
+    
+    return messages
+
+
 def release_rc_override(master):
     """Release RC override"""
     master.mav.rc_channels_override_send(
@@ -111,46 +146,70 @@ if __name__ == "__main__":
         # Arm
         arm_throttle(master)
         time.sleep(1)
+        
+        print "\n>>> CHECKING PRE-FLIGHT STATUS <<<"
+        check_messages(master, timeout=1.0)
 
         # Test Level 1: 33% power
         print "\n>>> LEVEL 1: 33%% POWER FOR 3 SECONDS <<<"
         rc_channels = [NEUTRAL, NEUTRAL, THROTTLE_33, NEUTRAL, 0, 0, 0, 0]
         set_rc_override(master, rc_channels)
-        time.sleep(3)
+        
+        # Monitor during test
+        for i in range(3):
+            time.sleep(1)
+            print "Level 1 - Second %d..." % (i + 1)
+            msgs = check_messages(master, timeout=0.2)
 
         # Return to minimum
         rc_channels[2] = THROTTLE_MIN
         set_rc_override(master, rc_channels)
         time.sleep(1)
+        check_messages(master, timeout=0.5)
 
         # Test Level 2: 66% power
-        print ">>> LEVEL 2: 66%% POWER FOR 3 SECONDS <<<"
+        print "\n>>> LEVEL 2: 66%% POWER FOR 3 SECONDS <<<"
         rc_channels[2] = THROTTLE_66
         set_rc_override(master, rc_channels)
-        time.sleep(3)
+        
+        # Monitor during test
+        for i in range(3):
+            time.sleep(1)
+            print "Level 2 - Second %d..." % (i + 1)
+            msgs = check_messages(master, timeout=0.2)
 
         # Return to minimum
         rc_channels[2] = THROTTLE_MIN
         set_rc_override(master, rc_channels)
         time.sleep(1)
+        check_messages(master, timeout=0.5)
 
         # Test Level 3: 100% power
-        print ">>> LEVEL 3: 100%% POWER FOR 3 SECONDS <<<"
+        print "\n>>> LEVEL 3: 100%% POWER FOR 3 SECONDS <<<"
         rc_channels[2] = THROTTLE_100
         set_rc_override(master, rc_channels)
-        time.sleep(3)
+        
+        # Monitor during test
+        for i in range(3):
+            time.sleep(1)
+            print "Level 3 - Second %d..." % (i + 1)
+            msgs = check_messages(master, timeout=0.2)
 
         # Stop
-        print ">>> STOPPING ALL MOTORS <<<"
+        print "\n>>> STOPPING ALL MOTORS <<<"
         rc_channels[2] = THROTTLE_MIN
         set_rc_override(master, rc_channels)
         time.sleep(0.5)
+        check_messages(master, timeout=0.5)
 
         release_rc_override(master)
         time.sleep(0.5)
 
         # Disarm
         disarm_throttle(master)
+        
+        print "\n>>> CHECKING POST-FLIGHT STATUS <<<"
+        check_messages(master, timeout=1.0)
 
         print "\n" + "="*50
         print "TEST COMPLETED SUCCESSFULLY!"
