@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import DroneControl from '../components/DroneControl';
 import FlightHistory from '../components/FlightHistory';
-import { Flight, DroneStatus } from '../types/flight';
+import { Flight, DroneStatus, ConnectionStatus } from '../types/flight';
 import { droneApi } from '../services/api';
 
 const Dashboard: React.FC = () => {
@@ -11,31 +11,65 @@ const Dashboard: React.FC = () => {
     isFlying: false,
     batteryLevel: 0,
   });
+  const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>({
+    wifiConnected: false,
+    sshConnected: false,
+    droneReady: false,
+  });
   const [flights, setFlights] = useState<Flight[]>([]);
   const [selectedFlight, setSelectedFlight] = useState<Flight | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isConnecting, setIsConnecting] = useState(false);
 
-  // Fetch drone status periodically
+  // Check connection status periodically
   useEffect(() => {
+    const checkConnection = async () => {
+      try {
+        const status = await droneApi.getConnectionStatus();
+        setConnectionStatus(status);
+        setError(null);
+      } catch (err) {
+        // Backend not available - check WiFi only
+        try {
+          const wifi = await droneApi.checkWifiConnection();
+          setConnectionStatus({
+            wifiConnected: wifi.connected,
+            sshConnected: false,
+            droneReady: false,
+          });
+        } catch {
+          setConnectionStatus({
+            wifiConnected: false,
+            sshConnected: false,
+            droneReady: false,
+          });
+        }
+      }
+    };
+
+    checkConnection();
+    const interval = setInterval(checkConnection, 3000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Fetch drone status when SSH is connected
+  useEffect(() => {
+    if (!connectionStatus.sshConnected) return;
+
     const fetchStatus = async () => {
       try {
         const status = await droneApi.getStatus();
         setDroneStatus(status);
         setError(null);
       } catch (err) {
-        // Use mock data when backend is not available
-        setDroneStatus({
-          isConnected: true,
-          isFlying: false,
-          batteryLevel: 85,
-        });
+        // Keep last known status
       }
     };
 
     fetchStatus();
-    const interval = setInterval(fetchStatus, 5000);
+    const interval = setInterval(fetchStatus, 2000);
     return () => clearInterval(interval);
-  }, []);
+  }, [connectionStatus.sshConnected]);
 
   // Fetch flight history
   useEffect(() => {
@@ -44,36 +78,7 @@ const Dashboard: React.FC = () => {
         const history = await droneApi.getFlightHistory();
         setFlights(history);
       } catch (err) {
-        // Use mock data when backend is not available
-        setFlights([
-          {
-            id: '1',
-            date: '2024-01-15T10:30:00',
-            duration: 325,
-            pigeonsDetected: 12,
-            status: 'completed',
-            startTime: '10:30:00',
-            endTime: '10:35:25',
-          },
-          {
-            id: '2',
-            date: '2024-01-14T14:15:00',
-            duration: 480,
-            pigeonsDetected: 8,
-            status: 'completed',
-            startTime: '14:15:00',
-            endTime: '14:23:00',
-          },
-          {
-            id: '3',
-            date: '2024-01-13T09:00:00',
-            duration: 120,
-            pigeonsDetected: 3,
-            status: 'failed',
-            startTime: '09:00:00',
-            endTime: '09:02:00',
-          },
-        ]);
+        setFlights([]);
       }
     };
 
@@ -82,23 +87,69 @@ const Dashboard: React.FC = () => {
     }
   }, [activeTab]);
 
+  const handleConnect = async () => {
+    setIsConnecting(true);
+    setError(null);
+    try {
+      const result = await droneApi.connectSSH();
+      if (result.success) {
+        setConnectionStatus(prev => ({ ...prev, sshConnected: true }));
+      } else {
+        setError(result.error || 'Failed to connect to drone');
+      }
+    } catch (err) {
+      setError('Failed to connect to drone');
+    } finally {
+      setIsConnecting(false);
+    }
+  };
+
+  const handleDisconnect = async () => {
+    try {
+      await droneApi.disconnectSSH();
+      setConnectionStatus(prev => ({ ...prev, sshConnected: false, droneReady: false }));
+      setDroneStatus({ isConnected: false, isFlying: false, batteryLevel: 0 });
+    } catch (err) {
+      setError('Failed to disconnect');
+    }
+  };
+
   const handleStartFlight = async () => {
     try {
-      await droneApi.startFlight();
-      setDroneStatus((prev) => ({ ...prev, isFlying: true }));
+      const result = await droneApi.startFlight();
+      if (result.success) {
+        setDroneStatus((prev) => ({ ...prev, isFlying: true }));
+      } else {
+        setError('Failed to start flight');
+      }
     } catch (err) {
-      // Mock for demo
-      setDroneStatus((prev) => ({ ...prev, isFlying: true }));
+      setError('Failed to start flight');
     }
   };
 
   const handleStopFlight = async () => {
     try {
-      await droneApi.stopFlight();
-      setDroneStatus((prev) => ({ ...prev, isFlying: false }));
+      const result = await droneApi.stopFlight();
+      if (result.success) {
+        setDroneStatus((prev) => ({ ...prev, isFlying: false }));
+      } else {
+        setError('Failed to stop flight');
+      }
     } catch (err) {
-      // Mock for demo
-      setDroneStatus((prev) => ({ ...prev, isFlying: false }));
+      setError('Failed to stop flight');
+    }
+  };
+
+  const handleAbortMission = async () => {
+    try {
+      const result = await droneApi.abortMission();
+      if (result.success) {
+        setDroneStatus((prev) => ({ ...prev, isFlying: false }));
+      } else {
+        setError(result.error || 'Failed to abort mission');
+      }
+    } catch (err) {
+      setError('Failed to abort mission');
     }
   };
 
@@ -134,8 +185,13 @@ const Dashboard: React.FC = () => {
         {activeTab === 'control' ? (
           <DroneControl
             droneStatus={droneStatus}
+            connectionStatus={connectionStatus}
+            onConnect={handleConnect}
+            onDisconnect={handleDisconnect}
             onStartFlight={handleStartFlight}
             onStopFlight={handleStopFlight}
+            onAbortMission={handleAbortMission}
+            isConnecting={isConnecting}
           />
         ) : (
           <FlightHistory

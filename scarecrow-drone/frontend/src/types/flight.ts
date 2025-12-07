@@ -14,3 +14,9 @@ export interface DroneStatus {
   batteryLevel: number;
   currentFlight?: Flight;
 }
+
+export interface ConnectionStatus {
+  wifiConnected: boolean;
+  sshConnected: boolean;
+  droneReady: boolean;
+}
