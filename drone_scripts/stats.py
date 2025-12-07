@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-
+#type:ignore
 """
 Drone Stats Script for Intel Aero RTF
 Returns drone_id, battery_percentage, and connected_status in JSON format
