@@ -1,3 +1,7 @@
+# Node.js
+scarecrow-drone/frontend/node_modules/
+package-lock.json
+
 # Python packages and distributions
 dronekit_packages/
 *.whl
