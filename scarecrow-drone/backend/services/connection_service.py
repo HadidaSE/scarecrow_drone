@@ -230,6 +230,14 @@ class ConnectionService:
 
     def get_connection_status(self) -> dict:
         """Get full connection status"""
+        # Mock mode - always return fully connected
+        if self.MOCK_MODE:
+            return {
+                "wifiConnected": True,
+                "sshConnected": True,
+                "droneReady": True
+            }
+
         wifi_check = self.check_wifi_connection()
         wifi_connected = wifi_check.get("connected", False)
 
