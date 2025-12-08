@@ -37,7 +37,7 @@ def init_database():
     ''')
 
     # Telemetry table - one record per second during flight
-    # Matches drone_info.py output
+    # Mode is always MANUAL (no GPS)
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS telemetry (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -45,8 +45,6 @@ def init_database():
             timestamp DATETIME NOT NULL,
             mode TEXT,
             armed INTEGER,
-            battery TEXT,
-            gps TEXT,
             location TEXT,
             attitude TEXT,
             groundspeed REAL,
@@ -125,23 +123,21 @@ def get_all_flights() -> List[Dict]:
 # Telemetry Operations
 # =============================================================================
 
-def record_telemetry(flight_id: int, mode: str, armed: bool, battery: str,
-                     gps: str, location: str, attitude: str, groundspeed: float):
+def record_telemetry(flight_id: int, mode: str, armed: bool,
+                     location: str, attitude: str, groundspeed: float):
     """Record one telemetry snapshot (called every second)"""
     conn = get_connection()
     cursor = conn.cursor()
 
     cursor.execute('''
         INSERT INTO telemetry (
-            flight_id, timestamp, mode, armed, battery, gps, location, attitude, groundspeed
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            flight_id, timestamp, mode, armed, location, attitude, groundspeed
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)
     ''', (
         flight_id,
         datetime.now(),
         mode,
         1 if armed else 0,
-        battery,
-        gps,
         location,
         attitude,
         groundspeed
@@ -212,13 +208,11 @@ if __name__ == "__main__":
     # Record telemetry (matches drone_info.py output)
     record_telemetry(
         flight_id=flight_id,
-        mode="STABILIZED",
+        mode="MANUAL",
         armed=True,
-        battery="Battery:voltage=12.4,current=None,level=85",
-        gps="GPSInfo:fix=3,num_sat=12",
-        location="LocationGlobalRelative:lat=32.0853,lon=34.7818,alt=10.5",
+        location="LocationGlobalRelative:lat=32.0853,lon=34.7818,alt=1.0",
         attitude="Attitude:pitch=0.02,yaw=1.54,roll=-0.01",
-        groundspeed=2.5
+        groundspeed=0.5
     )
     print("Recorded telemetry")
 

@@ -193,7 +193,9 @@ body {
 .control-buttons {
   display: flex;
   justify-content: center;
+  gap: 15px;
   margin-bottom: 20px;
+  flex-wrap: wrap;
 }
 
 .btn {
@@ -247,6 +249,83 @@ body {
   box-shadow:
     inset 0 1px 0 rgba(255,255,255,0.15),
     0 0 15px rgba(139, 91, 91, 0.4);
+}
+
+.btn-abort {
+  background: linear-gradient(180deg, #8b2a2a 0%, #6b1a1a 50%, #4a0a0a 100%);
+  color: #ffcccc;
+  border-color: #9b3a3a;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.1),
+    0 4px 8px rgba(0,0,0,0.3);
+  animation: abort-pulse 1.5s infinite;
+}
+
+.btn-abort:hover {
+  background: linear-gradient(180deg, #ab3a3a 0%, #8b2a2a 50%, #6b1a1a 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.15),
+    0 0 20px rgba(200, 50, 50, 0.6);
+}
+
+@keyframes abort-pulse {
+  0%, 100% {
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.1),
+      0 4px 8px rgba(0,0,0,0.3),
+      0 0 5px rgba(200, 50, 50, 0.3);
+  }
+  50% {
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.1),
+      0 4px 8px rgba(0,0,0,0.3),
+      0 0 15px rgba(200, 50, 50, 0.6);
+  }
+}
+
+.btn-disconnect {
+  background: linear-gradient(180deg, #3a3a3a 0%, #2a2a2a 50%, #1a1a1a 100%);
+  color: #909090;
+  border-color: #4a4a4a;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.1),
+    0 2px 4px rgba(0,0,0,0.3);
+}
+
+.btn-disconnect:hover:not(:disabled) {
+  background: linear-gradient(180deg, #4a4a4a 0%, #3a3a3a 50%, #2a2a2a 100%);
+  color: #b0b0b0;
+  border-color: #5a5a5a;
+}
+
+.btn-disconnect:disabled {
+  background: linear-gradient(180deg, #2a2a2a 0%, #1a1a1a 100%);
+  color: #404040;
+  border-color: #2a2a2a;
+  cursor: not-allowed;
+}
+
+.btn-connect {
+  background: linear-gradient(180deg, #3a5a6b 0%, #2a4a5a 50%, #1a3a4a 100%);
+  color: #b0d0d0;
+  border-color: #4a6a7b;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.1),
+    0 4px 8px rgba(0,0,0,0.3);
+}
+
+.btn-connect:hover:not(:disabled) {
+  background: linear-gradient(180deg, #4a6a7b 0%, #3a5a6b 50%, #2a4a5a 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.15),
+    0 0 15px rgba(91, 139, 154, 0.4);
+}
+
+.btn-connect:disabled {
+  background: linear-gradient(180deg, #3a3a3a 0%, #2a2a2a 100%);
+  color: #505050;
+  border-color: #3a3a3a;
+  cursor: not-allowed;
 }
 
 /* Flight Status */
@@ -446,6 +525,51 @@ body {
   text-transform: uppercase;
   letter-spacing: 1px;
   font-size: 0.85rem;
+}
+
+/* Flight Summary */
+.flight-summary {
+  margin: 15px 0;
+}
+
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid #2a2a2a;
+}
+
+.summary-row:last-child {
+  border-bottom: none;
+}
+
+.summary-row .label {
+  color: #707070;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-size: 0.8rem;
+}
+
+.summary-row .value {
+  color: #b0b0b0;
+  font-weight: 500;
+  font-size: 0.95rem;
+}
+
+/* Connection Panel */
+.connection-panel {
+  text-align: center;
+  padding: 20px;
+}
+
+.connection-panel p {
+  margin-bottom: 15px;
+  font-size: 0.9rem;
+  color: #808080;
+}
+
+.connection-panel .warning {
+  color: #a08060;
 }
 
 /* Scrollbar */
