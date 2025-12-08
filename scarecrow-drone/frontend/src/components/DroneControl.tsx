@@ -22,7 +22,7 @@ const DroneControl: React.FC<DroneControlProps> = ({
   onAbortMission,
   isConnecting,
 }) => {
-  const { isFlying, batteryLevel } = droneStatus;
+  const { isFlying } = droneStatus;
   const { wifiConnected, sshConnected, droneReady } = connectionStatus;
 
   return (
@@ -51,27 +51,13 @@ const DroneControl: React.FC<DroneControlProps> = ({
         </div>
       )}
 
-      {/* Show full controls only when SSH is connected */}
-      {sshConnected && (
+      {/* Show full controls only when both WiFi and SSH are connected */}
+      {wifiConnected && sshConnected && (
         <>
           <div className="status-panel">
             <div className={`status-indicator ${droneReady ? 'connected' : 'disconnected'}`}>
               <span className="status-dot"></span>
               {droneReady ? 'Drone Ready' : 'Drone Not Ready'}
-            </div>
-
-            <div className="battery-level">
-              <span>Battery: </span>
-              <div className="battery-bar">
-                <div
-                  className="battery-fill"
-                  style={{
-                    width: `${batteryLevel}%`,
-                    backgroundColor: batteryLevel > 20 ? '#4CAF50' : '#f44336'
-                  }}
-                ></div>
-              </div>
-              <span>{batteryLevel}%</span>
             </div>
           </div>
 
@@ -80,7 +66,7 @@ const DroneControl: React.FC<DroneControlProps> = ({
               <button
                 className="btn btn-start"
                 onClick={onStartFlight}
-                disabled={!droneReady || batteryLevel < 10}
+                disabled={!droneReady}
               >
                 Start Flight
               </button>

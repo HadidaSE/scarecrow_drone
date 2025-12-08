@@ -527,6 +527,51 @@ body {
   font-size: 0.85rem;
 }
 
+/* Flight Summary */
+.flight-summary {
+  margin: 15px 0;
+}
+
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid #2a2a2a;
+}
+
+.summary-row:last-child {
+  border-bottom: none;
+}
+
+.summary-row .label {
+  color: #707070;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-size: 0.8rem;
+}
+
+.summary-row .value {
+  color: #b0b0b0;
+  font-weight: 500;
+  font-size: 0.95rem;
+}
+
+/* Connection Panel */
+.connection-panel {
+  text-align: center;
+  padding: 20px;
+}
+
+.connection-panel p {
+  margin-bottom: 15px;
+  font-size: 0.9rem;
+  color: #808080;
+}
+
+.connection-panel .warning {
+  color: #a08060;
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar {
   width: 8px;

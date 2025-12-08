@@ -36,7 +36,7 @@ def return_home():
 
 
 @drone_router.post("/abort")
-def abort_mission():
+async def abort_mission():
     """POST /api/drone/abort - Emergency abort, terminate all tasks and land immediately"""
-    result = connection_service.abort_mission()
+    result = await drone_service.abort_mission()
     return result

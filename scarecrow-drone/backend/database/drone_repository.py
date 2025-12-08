@@ -35,16 +35,14 @@ class DroneRepository:
         """Save telemetry data for a flight"""
         query = """
             INSERT INTO telemetry
-            (flight_id, timestamp, mode, armed, battery, gps, location, attitude, groundspeed)
-            VALUES (?, datetime('now'), ?, ?, ?, ?, ?, ?, ?)
+            (flight_id, timestamp, mode, armed, location, attitude, groundspeed)
+            VALUES (?, datetime('now'), ?, ?, ?, ?, ?)
         """
         import json
         self.db.execute_write(query, (
             flight_id,
-            telemetry_data.get('mode'),
+            telemetry_data.get('mode', 'MANUAL'),
             1 if telemetry_data.get('armed') else 0,
-            json.dumps(telemetry_data.get('battery', {})),
-            json.dumps(telemetry_data.get('gps', {})),
             json.dumps(telemetry_data.get('location', {})),
             json.dumps(telemetry_data.get('attitude', {})),
             telemetry_data.get('groundspeed', 0)

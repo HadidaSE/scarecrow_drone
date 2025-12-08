@@ -11,7 +11,6 @@ export interface Flight {
 export interface DroneStatus {
   isConnected: boolean;
   isFlying: boolean;
-  batteryLevel: number;
   currentFlight?: Flight;
 }
 
@@ -19,4 +18,16 @@ export interface ConnectionStatus {
   wifiConnected: boolean;
   sshConnected: boolean;
   droneReady: boolean;
+}
+
+export interface FlightSummary {
+  flightId: string;
+  droneId: number;
+  duration: number;
+  avgSpeed: number;
+  avgAltitude: number;
+  status: string;
+  date: string;
+  startTime: string;
+  endTime: string;
 }

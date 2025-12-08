@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import DroneControl from '../components/DroneControl';
 import FlightHistory from '../components/FlightHistory';
-import { Flight, DroneStatus, ConnectionStatus } from '../types/flight';
+import { Flight, DroneStatus, ConnectionStatus, FlightSummary } from '../types/flight';
 import { droneApi } from '../services/api';
 
 const Dashboard: React.FC = () => {
@@ -9,7 +9,6 @@ const Dashboard: React.FC = () => {
   const [droneStatus, setDroneStatus] = useState<DroneStatus>({
     isConnected: false,
     isFlying: false,
-    batteryLevel: 0,
   });
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>({
     wifiConnected: false,
@@ -18,6 +17,8 @@ const Dashboard: React.FC = () => {
   });
   const [flights, setFlights] = useState<Flight[]>([]);
   const [selectedFlight, setSelectedFlight] = useState<Flight | null>(null);
+  const [flightSummary, setFlightSummary] = useState<FlightSummary | null>(null);
+  const [loadingSummary, setLoadingSummary] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
 
@@ -108,7 +109,7 @@ const Dashboard: React.FC = () => {
     try {
       await droneApi.disconnectSSH();
       setConnectionStatus(prev => ({ ...prev, sshConnected: false, droneReady: false }));
-      setDroneStatus({ isConnected: false, isFlying: false, batteryLevel: 0 });
+      setDroneStatus({ isConnected: false, isFlying: false });
     } catch (err) {
       setError('Failed to disconnect');
     }
@@ -153,8 +154,23 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  const handleSelectFlight = (flight: Flight) => {
+  const handleSelectFlight = async (flight: Flight) => {
     setSelectedFlight(flight);
+    setLoadingSummary(true);
+    setFlightSummary(null);
+    try {
+      const data = await droneApi.getFlightSummary(flight.id);
+      setFlightSummary(data);
+    } catch (err) {
+      console.error('Failed to load flight summary:', err);
+    } finally {
+      setLoadingSummary(false);
+    }
+  };
+
+  const handleCloseModal = () => {
+    setSelectedFlight(null);
+    setFlightSummary(null);
   };
 
   return (
@@ -202,14 +218,42 @@ const Dashboard: React.FC = () => {
       </main>
 
       {selectedFlight && (
-        <div className="modal-overlay" onClick={() => setSelectedFlight(null)}>
+        <div className="modal-overlay" onClick={handleCloseModal}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h3>Flight Details</h3>
-            <p><strong>Date:</strong> {new Date(selectedFlight.date).toLocaleString()}</p>
-            <p><strong>Duration:</strong> {Math.floor(selectedFlight.duration / 60)}m {selectedFlight.duration % 60}s</p>
-            <p><strong>Pigeons Detected:</strong> {selectedFlight.pigeonsDetected}</p>
-            <p><strong>Status:</strong> {selectedFlight.status}</p>
-            <button className="btn" onClick={() => setSelectedFlight(null)}>Close</button>
+            <h3>Flight Summary</h3>
+            {loadingSummary ? (
+              <p>Loading...</p>
+            ) : flightSummary ? (
+              <div className="flight-summary">
+                <div className="summary-row">
+                  <span className="label">Flight ID:</span>
+                  <span className="value">{flightSummary.flightId}</span>
+                </div>
+                <div className="summary-row">
+                  <span className="label">Drone ID:</span>
+                  <span className="value">{flightSummary.droneId}</span>
+                </div>
+                <div className="summary-row">
+                  <span className="label">Duration:</span>
+                  <span className="value">{Math.floor(flightSummary.duration / 60)}m {flightSummary.duration % 60}s</span>
+                </div>
+                <div className="summary-row">
+                  <span className="label">Avg Speed:</span>
+                  <span className="value">{flightSummary.avgSpeed} m/s</span>
+                </div>
+                <div className="summary-row">
+                  <span className="label">Avg Altitude:</span>
+                  <span className="value">{flightSummary.avgAltitude} m</span>
+                </div>
+                <div className="summary-row">
+                  <span className="label">Status:</span>
+                  <span className="value">{flightSummary.status}</span>
+                </div>
+              </div>
+            ) : (
+              <p>No data available.</p>
+            )}
+            <button className="btn" onClick={handleCloseModal}>Close</button>
           </div>
         </div>
       )}

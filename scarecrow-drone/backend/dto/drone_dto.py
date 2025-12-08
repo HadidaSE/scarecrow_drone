@@ -7,14 +7,12 @@ class DroneStatusDTO:
     """DTO for drone status response - matches frontend DroneStatus interface"""
     is_connected: bool
     is_flying: bool
-    battery_level: int
 
     def to_dict(self) -> dict:
         """Convert to camelCase dict for frontend"""
         return {
             "isConnected": self.is_connected,
-            "isFlying": self.is_flying,
-            "batteryLevel": self.battery_level
+            "isFlying": self.is_flying
         }
 
 

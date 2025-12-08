@@ -20,10 +20,8 @@ class DroneConnection:
     _status = {
         "is_connected": False,
         "is_flying": False,
-        "battery_level": 0,
-        "mode": "UNKNOWN",
+        "mode": "MANUAL",
         "armed": False,
-        "gps": {},
         "location": {},
         "attitude": {},
         "groundspeed": 0.0
@@ -97,10 +95,6 @@ class DroneConnection:
         """Check if drone is currently flying"""
         return DroneConnection._status.get("is_flying", False)
 
-    def get_battery_level(self) -> int:
-        """Get current battery level"""
-        return DroneConnection._status.get("battery_level", 0)
-
     def get_status(self) -> dict:
         """Get full drone status"""
         return DroneConnection._status.copy()
@@ -108,6 +102,5 @@ class DroneConnection:
     def update_status_from_ssh(self, data: dict) -> None:
         """Update status from SSH subprocess (called by ConnectionService)"""
         DroneConnection._status["is_connected"] = data.get("is_connected", False)
-        DroneConnection._status["battery_level"] = data.get("battery_level", 0)
         if "drone_id" in data:
             DroneConnection._status["drone_id"] = data["drone_id"]

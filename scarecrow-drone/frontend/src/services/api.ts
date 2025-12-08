@@ -1,4 +1,4 @@
-import { Flight, DroneStatus, ConnectionStatus } from '../types/flight';
+import { Flight, DroneStatus, ConnectionStatus, FlightSummary } from '../types/flight';
 
 const API_BASE_URL = 'http://localhost:5000/api';
 
@@ -92,8 +92,16 @@ export const droneApi = {
   // Get single flight details
   getFlight: async (flightId: string): Promise<Flight> => {
     const response = await fetch(`${API_BASE_URL}/flights/${flightId}`);
-    if (!response.ok) 
+    if (!response.ok)
       throw new Error('Failed to get flight details');
+    return response.json();
+  },
+
+  // Get flight summary with stats
+  getFlightSummary: async (flightId: string): Promise<FlightSummary> => {
+    const response = await fetch(`${API_BASE_URL}/flights/${flightId}/summary`);
+    if (!response.ok)
+      throw new Error('Failed to get flight summary');
     return response.json();
   },
 };
