@@ -1,125 +1,109 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
 """
-Drone Stats Script for Intel Aero RTF
-Returns drone_id, battery_percentage, and connected_status in JSON format
+stats.py - Drone Status Reporter
+Runs on Intel Aero drone, outputs JSON status to stdout for SSH pipe
 Compatible with Python 2.7
-Usage: python stats.py [-d|--debug]
 """
-
-from dronekit import connect
+from __future__ import print_function
 import json
 import time
 import sys
 
-# Global debug flag
-DEBUG = False
+# Try to import dronekit
+try:
+    from dronekit import connect, VehicleMode
+    DRONEKIT_AVAILABLE = True
+except ImportError:
+    DRONEKIT_AVAILABLE = False
+    print(json.dumps({"error": "dronekit not installed"}))
+    sys.stdout.flush()
 
 
-def debug_print(message):
-    """Print debug message only if DEBUG is enabled"""
-    if DEBUG:
-        print "DEBUG: %s" % message
+# Connection string for Intel Aero's flight controller
+CONNECTION_STRING = "udp:127.0.0.1:14550"
+
+# Drone ID (can be set per drone for fleet management)
+DRONE_ID = 1
+
+# Update interval in seconds
+UPDATE_INTERVAL = 1.0
 
 
-def get_drone_stats():
-    """
-    Connects to drone and retrieves stats
-    Returns dict with drone_id, battery_percentage, connected_status
-    """
-    stats = {
-        "drone_id": None,
-        "battery_percentage": None,
-        "connected_status": False
+def get_vehicle_status(vehicle):
+    """Build status dictionary from vehicle state"""
+    return {
+        "connected_status": vehicle.is_armable is not None,
+        "drone_id": DRONE_ID,
+        "mode": vehicle.mode.name if vehicle.mode else "UNKNOWN",
+        "armed": vehicle.armed,
+        "gps": {
+            "fix_type": vehicle.gps_0.fix_type if vehicle.gps_0 else 0,
+            "satellites": vehicle.gps_0.satellites_visible if vehicle.gps_0 else 0
+        },
+        "location": {
+            "lat": vehicle.location.global_frame.lat if vehicle.location.global_frame else None,
+            "lon": vehicle.location.global_frame.lon if vehicle.location.global_frame else None,
+            "alt": vehicle.location.global_frame.alt if vehicle.location.global_frame else None
+        },
+        "attitude": {
+            "roll": vehicle.attitude.roll if vehicle.attitude else 0,
+            "pitch": vehicle.attitude.pitch if vehicle.attitude else 0,
+            "yaw": vehicle.attitude.yaw if vehicle.attitude else 0
+        },
+        "groundspeed": vehicle.groundspeed or 0,
+        "airspeed": vehicle.airspeed or 0,
+        "heading": vehicle.heading or 0
     }
 
+
+def main():
+    """Main loop - connect to vehicle and output status"""
+    if not DRONEKIT_AVAILABLE:
+        sys.exit(1)
+
+    vehicle = None
+
     try:
-        # Connect to flight controller
-        debug_print("Attempting to connect to /dev/ttyS1...")
-        vehicle = connect('/dev/ttyS1',
-                         wait_ready=False,
-                         baud=1500000,
-                         heartbeat_timeout=30,
-                         source_system=255)
+        # Connect to the vehicle
+        print(json.dumps({"status": "connecting", "drone_id": DRONE_ID}))
+        sys.stdout.flush()
 
-        # Connection successful
-        stats["connected_status"] = True
-        debug_print("Connection successful")
+        vehicle = connect(CONNECTION_STRING, wait_ready=True)
 
-        # Wait for data to be received from flight controller
-        debug_print("Waiting 1 second for data...")
-        time.sleep(1)
+        print(json.dumps({"status": "connected", "drone_id": DRONE_ID}))
+        sys.stdout.flush()
 
-        # Get drone ID (using system ID)
-        try:
-            stats["drone_id"] = vehicle._master.target_system
-            debug_print("Drone ID = %s" % stats["drone_id"])
-        except Exception as e:
-            debug_print("Error getting drone ID: %s" % str(e))
-            stats["drone_id"] = "unknown"
+        # Main status loop
+        while True:
+            try:
+                status = get_vehicle_status(vehicle)
+                print(json.dumps(status))
+                sys.stdout.flush()
+            except Exception as e:
+                print(json.dumps({
+                    "error": str(e),
+                    "connected_status": False,
+                    "drone_id": DRONE_ID
+                }))
+                sys.stdout.flush()
 
-        # Get battery percentage
-        try:
-            debug_print("Checking battery object...")
-            debug_print("vehicle.battery = %s" % vehicle.battery)
-            if vehicle.battery:
-                debug_print("Battery object exists")
-                debug_print("battery.level = %s" % vehicle.battery.level)
-                debug_print("battery.voltage = %s" % vehicle.battery.voltage)
-                debug_print("battery.current = %s" % vehicle.battery.current)
+            time.sleep(UPDATE_INTERVAL)
 
-                # Try to get battery level directly
-                if vehicle.battery.level is not None:
-                    stats["battery_percentage"] = vehicle.battery.level
-                    debug_print("Using battery.level = %s" % stats["battery_percentage"])
-                # Fallback: estimate from voltage if available
-                elif vehicle.battery.voltage is not None and vehicle.battery.voltage < 60:
-                    # LiPo battery voltage to percentage estimation (4S battery: 14.0-16.8V)
-                    voltage = vehicle.battery.voltage
-                    debug_print("Calculating from voltage = %s V" % voltage)
-                    # 4S LiPo: 16.8V = 100%, 14.0V = 0%
-                    percentage = ((voltage - 14.0) / (16.8 - 14.0)) * 100
-                    percentage = max(0, min(100, percentage))  # Clamp between 0-100
-                    stats["battery_percentage"] = int(round(percentage))
-                    debug_print("Calculated percentage = %s%%" % stats["battery_percentage"])
-                else:
-                    debug_print("No valid battery data (voltage may be >= 60 or None)")
-                    stats["battery_percentage"] = None
-            else:
-                debug_print("Battery object is None")
-                stats["battery_percentage"] = None
-        except Exception as e:
-            debug_print("Exception getting battery: %s" % str(e))
-            stats["battery_percentage"] = None
-
-        # Close connection
-        debug_print("Closing connection...")
-        vehicle.close()
-
+    except KeyboardInterrupt:
+        print(json.dumps({"status": "interrupted", "drone_id": DRONE_ID}))
+        sys.stdout.flush()
     except Exception as e:
-        # Connection failed
-        debug_print("Connection failed: %s" % str(e))
-        stats["connected_status"] = False
-        stats["drone_id"] = "unknown"
-        stats["battery_percentage"] = None
-
-    return stats
+        print(json.dumps({
+            "error": "Connection failed: " + str(e),
+            "connected_status": False,
+            "drone_id": DRONE_ID
+        }))
+        sys.stdout.flush()
+        sys.exit(1)
+    finally:
+        if vehicle:
+            vehicle.close()
 
 
 if __name__ == "__main__":
-    # Parse command line arguments for debug flag
-    if len(sys.argv) > 1:
-        if sys.argv[1] in ['-d', '--debug', '-debug']:
-            DEBUG = True
-            debug_print("Debug mode enabled")
-
-    # Get drone stats
-    drone_stats = get_drone_stats()
-
-    # Print separator (only in debug mode)
-    if DEBUG:
-        print "\n=== FINAL JSON OUTPUT ==="
-    
-    # Print as JSON
-    print json.dumps(drone_stats, indent=2)
+    main()
