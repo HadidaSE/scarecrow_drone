@@ -9,7 +9,8 @@
 #SBATCH --mail-type=BEGIN,END,FAIL
 ##SBATCH --mail-user=YOUR_EMAIL@post.bgu.ac.il   ### Uncomment and set your email
 
-#SBATCH --gpus=rtx_3090:1            ### Request 1x RTX 3090 (use underscore, not hyphen)
+#SBATCH --gpus=rtx_6000:1            ### Request 1x RTX 6000
+#SBATCH --mem=64G                     ### Request 64GB RAM for large dataset
 
 ### Print job info
 echo "=========================================="

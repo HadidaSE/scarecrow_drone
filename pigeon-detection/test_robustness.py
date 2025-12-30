@@ -13,7 +13,7 @@ import shutil
 
 # Paths
 BASE_DIR = Path(__file__).parent
-MODEL_PATH = BASE_DIR / "runs" / "pigeon_detector_gpu2" / "weights" / "best.pt"
+MODEL_PATH = BASE_DIR / "runs" / "pigeon_detector_gpu7" / "weights" / "best.pt"
 DATA_DIR = BASE_DIR / "data" / "combined"
 VALID_IMAGES = DATA_DIR / "valid" / "images"
 VALID_LABELS = DATA_DIR / "valid" / "labels"

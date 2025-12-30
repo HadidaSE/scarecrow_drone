@@ -10,7 +10,7 @@ import torch
 
 # Paths
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DATA_YAML = os.path.join(BASE_DIR, "data", "combined", "data.yaml")
+DATA_YAML = os.path.join(BASE_DIR, "data", "combined", "data_augmented.yaml")
 OUTPUT_DIR = os.path.join(BASE_DIR, "runs")
 
 
@@ -72,8 +72,8 @@ def train():
         save=True,
         plots=True,
         device=device,          # Use GPU
-        workers=8,              # Data loading workers
-        cache="ram",            # Cache images in RAM for speed
+        workers=4,              # Data loading workers
+        cache="disk",           # Cache to disk (RAM caused OOM with 10k images)
         amp=True,               # Automatic mixed precision (faster on GPU)
         verbose=True,
     )
