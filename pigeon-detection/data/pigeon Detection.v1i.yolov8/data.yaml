@@ -1,0 +1,13 @@
+train: ../train/images
+val: ../valid/images
+test: ../test/images
+
+nc: 1
+names: ['Pigeon']
+
+roboflow:
+  workspace: jn-eljld
+  project: pigeon-detection-y5a8t
+  version: 1
+  license: CC BY 4.0
+  url: https://universe.roboflow.com/jn-eljld/pigeon-detection-y5a8t/dataset/1

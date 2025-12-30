@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir:*)",
+      "Bash(ls:*)",
+      "Bash(python:*)",
+      "Bash(powershell -Command:*)",
+      "Bash(cmd.exe /c \"del /f /q \\\\?\\\\c:\\\\projects\\\\scarecrow_drone\\\\scarecrow_drone\\\\nul\")",
+      "Bash(cmd.exe /c \"dir /s /b c:\\\\projects\\\\scarecrow_drone\\\\scarecrow_drone\\\\nul 2>nul\")",
+      "Bash(git add:*)",
+      "Bash(cmd.exe /c \"for /r c:\\\\projects\\\\scarecrow_drone\\\\scarecrow_drone %i in \\(nul\\) do @if exist \"\"%i\"\" echo %i\")"
+    ]
+  }
+}

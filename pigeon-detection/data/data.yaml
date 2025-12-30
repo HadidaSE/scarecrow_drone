@@ -1,0 +1,13 @@
+train: ../train/images
+val: ../valid/images
+test: ../test/images
+
+nc: 1
+names: ['Pigeon']
+
+roboflow:
+  workspace: yolo-bl12d
+  project: pigeons-detection-l7u3l
+  version: 1
+  license: CC BY 4.0
+  url: https://universe.roboflow.com/yolo-bl12d/pigeons-detection-l7u3l/dataset/1
