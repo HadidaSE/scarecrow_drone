@@ -10,7 +10,7 @@ import torch
 
 # Paths
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DATA_YAML = os.path.join(BASE_DIR, "data", "combined", "data_augmented.yaml")
+DATA_YAML = os.path.join(BASE_DIR, "data", "final_dataset", "data.yaml")
 OUTPUT_DIR = os.path.join(BASE_DIR, "runs")
 
 
@@ -57,8 +57,8 @@ def train():
         print("  https://universe.roboflow.com/spirosmakris/pigeons-qbzpj")
         return None
 
-    # Load YOLOv8 nano (smallest, fastest)
-    model = YOLO("yolov8n.pt")
+    # Load YOLOv8 small (good accuracy, efficient on Pi 5)
+    model = YOLO("yolov8s.pt")
 
     # Train with GPU-optimized settings
     results = model.train(
