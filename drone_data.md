@@ -176,76 +176,20 @@ webpenc          # WEBP image encoder
 # Kill mavlink_bridge first
 killall python2
 
-# Stream via UDP using hardware H.264 encoder
-gst-launch-1.0 \
+# Stream via UDP using JPEG encoding (RTP/JPEG)
+gst-launch-1.0 -v \
   v4l2src device=/dev/video13 ! \
   video/x-raw,width=640,height=480,framerate=30/1 ! \
   videoconvert ! \
-  vaapih264enc rate-control=cbr bitrate=1200 ! \
-  rtph264pay config-interval=1 pt=96 ! \
-  udpsink host=192.168.1.2 port=5000
+  jpegenc quality=85 ! \
+  rtpjpegpay ! \
+  udpsink host=192.168.1.3 port=5000
 ```
 
 **On Windows PC (with VLC):**
 ```powershell
-vlc udp://@:5000 --network-caching=50
-```
-
-### Alternative Streaming Methods
-
-#### MJPEG Stream (More Compatible)
-```bash
-gst-launch-1.0 \
-  v4l2src device=/dev/video13 ! \
-  video/x-raw,width=640,height=480,framerate=30/1 ! \
-  videoconvert ! \
-  jpegenc quality=80 ! \
-  rtpjpegpay ! \
-  udpsink host=192.168.1.2 port=5000
-```
-
-View with: `vlc rtp://192.168.1.2:5000`
-
-#### Higher Quality (1280x720)
-```bash
-gst-launch-1.0 \
-  v4l2src device=/dev/video13 ! \
-  video/x-raw,width=1280,height=720,framerate=30/1 ! \
-  videoconvert ! \
-  vaapih264enc rate-control=cbr bitrate=2000 ! \
-  rtph264pay config-interval=1 pt=96 ! \
-  udpsink host=192.168.1.2 port=5000
-```
-
-### Streaming Performance
-- **Latency**: ~50-100ms with H.264, ~100-200ms with MJPEG
-- **Bitrate**: 800-1200 kbps for 640x480, 1500-2500 kbps for 1280x720
-- **CPU Usage**: <15% with hardware encoding (vaapih264enc)
-- **Battery Impact**: ~5-10% additional drain
-
-### Recording on Drone
-
-**Record to File:**
-```bash
-gst-launch-1.0 \
-  v4l2src device=/dev/video13 ! \
-  video/x-raw,width=640,height=480,framerate=30/1 ! \
-  videoconvert ! \
-  vaapih264enc ! \
-  h264parse ! \
-  mp4mux ! \
-  filesink location=/home/root/flight_$(date +%s).mp4
-```
-
-**Stream and Record Simultaneously:**
-```bash
-gst-launch-1.0 \
-  v4l2src device=/dev/video13 ! \
-  video/x-raw,width=640,height=480,framerate=30/1 ! \
-  videoconvert ! \
-  tee name=t \
-  t. ! queue ! vaapih264enc ! rtph264pay ! udpsink host=192.168.1.2 port=5000 \
-  t. ! queue ! vaapih264enc ! mp4mux ! filesink location=/home/root/recording.mp4
+# Using SDP file (recommended)
+vlc drone.sdp
 ```
 
 ### Checking Stream Status
