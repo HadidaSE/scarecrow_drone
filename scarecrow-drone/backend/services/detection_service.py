@@ -45,11 +45,17 @@ class DetectionService:
         Returns:
             dict with success status
         """
+        print("\n=== STARTING DETECTION ===")
+        print(f"Flight ID: {flight_id}")
+        print(f"Stream Source: {stream_source}")
+        
         if self._detection_process is not None:
+            print("[ERROR] Detection already running!")
             return {"success": False, "error": "Detection already running"}
         
         # Check if detection script exists
         if not self._detection_script.exists():
+            print(f"[ERROR] Detection script not found at {self._detection_script}")
             return {
                 "success": False, 
                 "error": f"Detection script not found at {self._detection_script}"
@@ -59,18 +65,39 @@ class DetectionService:
         sdp_file = self._project_root / "live_detection" / f"{stream_source}.sdp"
         if not sdp_file.exists():
             sdp_file = self._drone_sdp
+        
+        print(f"[INFO] Detection script: {self._detection_script}")
+        print(f"[INFO] SDP file: {sdp_file}")
             
         if not sdp_file.exists():
+            print(f"[ERROR] SDP file not found at {sdp_file}")
             return {
                 "success": False,
                 "error": f"SDP file not found at {sdp_file}"
             }
         
         try:
+            # Use the project's global venv Python (at project root .venv)
+            # Navigate up from backend to project root
+            project_root = self._project_root
+            python_exe = project_root / ".venv" / "Scripts" / "python.exe"
+            
+            # Fallback to system Python if venv not found
+            if not python_exe.exists():
+                print(f"[WARNING] Project venv not found at {python_exe}, using system Python")
+                python_exe = "python"
+            else:
+                python_exe = str(python_exe)
+                print(f"[INFO] Using project venv Python: {python_exe}")
+            
             # Start detection process in background
             # The detect.py script will handle video stream and detection
+            print(f"[INFO] Starting detection subprocess...")
+            print(f"[INFO] Detection script: {self._detection_script}")
+            print(f"[INFO] Args: --stream {sdp_file} --flight-id {flight_id} --save-detections")
+            
             self._detection_process = subprocess.Popen(
-                [sys.executable, str(self._detection_script), 
+                [str(python_exe), "-u", str(self._detection_script),
                  "--stream", str(sdp_file),
                  "--flight-id", str(flight_id),
                  "--save-detections"],
@@ -82,6 +109,10 @@ class DetectionService:
             
             self._current_flight_id = flight_id
             self._detection_count = 0
+            
+            print(f"[SUCCESS] Detection process started with PID: {self._detection_process.pid}")
+            print(f"[INFO] Detection is now listening for video stream...")
+            print("=== DETECTION STARTED ===")
             
             return {
                 "success": True,
@@ -95,51 +126,96 @@ class DetectionService:
     def stop_detection(self) -> dict:
         """
         Stop the detection process
-        
+
         Returns:
-            dict with success status and detection count
+            dict with success status, detection count, and frames processed
         """
+        import json
+
+        print("\n=== STOPPING DETECTION ===")
+
         if self._detection_process is None:
+            print("[WARNING] No detection process running")
             return {"success": False, "error": "No detection process running"}
-        
+
         try:
+            print(f"[INFO] Terminating detection process (PID: {self._detection_process.pid})...")
             # Terminate the process
             self._detection_process.terminate()
-            
+
             # Wait for process to finish (with timeout)
+            detection_result = None
+            frames_processed = 0
+            frames_received = 0
+            total_pigeons = 0
+            duration = 0.0
+            average_fps = 0.0
+
             try:
-                stdout, stderr = self._detection_process.communicate(timeout=5)
-                
-                # Parse detection count from output if available
-                # detect.py should print "Total detections: X"
-                for line in stdout.split('\n'):
-                    if 'Total detections:' in line or 'Frames with pigeons:' in line:
-                        try:
-                            count = int(line.split(':')[-1].strip())
-                            self._detection_count = count
-                        except:
-                            pass
-                            
+                print("[INFO] Waiting for detection process to finish...")
+                stdout, stderr = self._detection_process.communicate(timeout=10)
+
+                print(f"[INFO] Detection process output:")
+                if stdout:
+                    print(f"STDOUT:\n{stdout}")
+                if stderr:
+                    print(f"STDERR:\n{stderr}")
+
+                # Parse JSON result from detect.py (use LAST occurrence for most recent stats)
+                json_lines = [line for line in stdout.split('\n') if line.startswith('DETECTION_RESULT_JSON:')]
+                if json_lines:
+                    try:
+                        # Use the last JSON line (most recent stats)
+                        last_json_line = json_lines[-1]
+                        json_str = last_json_line.replace('DETECTION_RESULT_JSON:', '', 1).strip()
+                        detection_result = json.loads(json_str)
+                        frames_processed = detection_result.get('frames_processed', 0)
+                        frames_received = detection_result.get('frames_received', 0)
+                        self._detection_count = detection_result.get('detections_count', 0)
+                        total_pigeons = detection_result.get('total_pigeons', 0)
+                        duration = detection_result.get('duration_seconds', 0.0)
+                        average_fps = detection_result.get('average_fps', 0.0)
+                        print(f"[INFO] Parsed JSON result (from {len(json_lines)} updates): {detection_result}")
+                    except Exception as e:
+                        print(f"[WARNING] Failed to parse JSON: {e}")
+                else:
+                    print(f"[WARNING] No JSON stats found in output")
+
             except subprocess.TimeoutExpired:
                 # Force kill if doesn't terminate
+                print("[WARNING] Detection process didn't terminate, forcing kill...")
                 self._detection_process.kill()
                 stdout, stderr = self._detection_process.communicate()
-            
+
             flight_id = self._current_flight_id
             detection_count = self._detection_count
-            
+
             # Reset state
             self._detection_process = None
             self._current_flight_id = None
             self._detection_count = 0
-            
+
+            print(f"[SUCCESS] Detection stopped")
+            print(f"[SUMMARY] Frames received: {frames_received}")
+            print(f"[SUMMARY] Frames processed: {frames_processed}")
+            print(f"[SUMMARY] Detections: {detection_count}")
+            print(f"[SUMMARY] Total pigeons: {total_pigeons}")
+            print(f"[SUMMARY] Duration: {duration}s")
+            print(f"[SUMMARY] Average FPS: {average_fps}")
+            print("=== DETECTION STOPPED ===")
+
             return {
                 "success": True,
                 "flight_id": flight_id,
+                "frames_received": frames_received,
+                "frames_processed": frames_processed,
                 "detection_count": detection_count,
-                "message": f"Detection stopped. Found {detection_count} frames with pigeons."
+                "total_pigeons": total_pigeons,
+                "duration_seconds": duration,
+                "average_fps": average_fps,
+                "message": f"Detection stopped. Processed {frames_processed} frames, found {detection_count} frames with pigeons ({total_pigeons} total pigeons)."
             }
-            
+
         except Exception as e:
             self._detection_process = None
             return {"success": False, "error": f"Error stopping detection: {str(e)}"}

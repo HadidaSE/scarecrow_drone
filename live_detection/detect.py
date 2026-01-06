@@ -44,6 +44,7 @@ from __future__ import annotations
 import shutil
 import subprocess
 import time
+import signal
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -54,12 +55,21 @@ import numpy as np
 from ultralytics import YOLO
 from ultralytics.engine.results import Results
 
+# Global flag for graceful shutdown
+shutdown_requested = False
+
+def signal_handler(signum, frame):
+    """Handle shutdown signals gracefully."""
+    global shutdown_requested
+    print("\n[INFO] Shutdown signal received, finishing current frame...")
+    shutdown_requested = True
+
 
 @dataclass
 class DetectionConfig:
     """Configuration settings for pigeon detection system."""
     
-    model_path: str = "..\\pigeon-detection\\runs\\best_v3.pt"
+    model_path: str = "C:\\Users\\Itamar\\Desktop\\final project\\live_detection\\best_v4.pt"
     confidence_threshold: float = 0.5
     sdp_file: str = "drone.sdp"
     frames_dir: str = "frames"
@@ -313,11 +323,27 @@ class PigeonDetector:
               f"Processed: {self.stats.frames_processed} | "
               f"Process FPS: {fps:.1f} | "
               f"Detections: {self.stats.detections_count}")
+
+    def print_json_stats(self) -> None:
+        """Print JSON stats for parent process to parse."""
+        import json
+        elapsed = self.stats.get_elapsed_time()
+        result = {
+            "frames_received": self.stats.frames_received,
+            "frames_processed": self.stats.frames_processed,
+            "detections_count": self.stats.detections_count,
+            "total_pigeons": self.stats.total_pigeons,
+            "duration_seconds": round(elapsed, 2),
+            "average_fps": round(self.stats.get_process_fps(), 2)
+        }
+        print(f"DETECTION_RESULT_JSON:{json.dumps(result)}")
     
     def print_summary(self) -> None:
         """Print final detection summary."""
+        import json
+
         elapsed = self.stats.get_elapsed_time()
-        
+
         print()
         print("=" * 60)
         print("SUMMARY")
@@ -325,30 +351,46 @@ class PigeonDetector:
         print(f"Duration: {elapsed:.1f} seconds")
         print(f"Frames Received: {self.stats.frames_received:,}")
         print(f"Frames Processed: {self.stats.frames_processed:,}")
-        
+
         if self.stats.frames_processed > 0:
             print(f"Average Process FPS: {self.stats.get_process_fps():.1f}")
             print(f"Frames with Pigeons: {self.stats.detections_count}")
             print(f"Total Pigeons: {self.stats.total_pigeons}")
-        
+
         if self.config.save_all_frames:
             print(f"All frames saved to: {self.config.frames_dir}/")
-        
+
         if self.config.save_detections and self.stats.detections_count > 0:
             print(f"Detection images saved to: {self.config.detections_dir}/")
-        
+
         print("=" * 60)
+
+        # Output structured JSON result for parent process to parse
+        result = {
+            "frames_received": self.stats.frames_received,
+            "frames_processed": self.stats.frames_processed,
+            "detections_count": self.stats.detections_count,
+            "total_pigeons": self.stats.total_pigeons,
+            "duration_seconds": round(elapsed, 2),
+            "average_fps": round(self.stats.get_process_fps(), 2)
+        }
+        print(f"DETECTION_RESULT_JSON:{json.dumps(result)}")
+        print()
     
     def cleanup(self) -> None:
         """Cleanup resources and terminate ffmpeg process."""
         if self.ffmpeg_process:
             self.ffmpeg_process.terminate()
             self.ffmpeg_process.wait()
-    
+
     def run(self) -> None:
         """Main detection loop."""
-    def run(self) -> None:
-        """Main detection loop."""
+        global shutdown_requested
+
+        # Register signal handlers for graceful shutdown
+        signal.signal(signal.SIGTERM, signal_handler)
+        signal.signal(signal.SIGINT, signal_handler)
+
         print("=" * 60)
         print("PIGEON DETECTION SYSTEM")
         print("=" * 60)
@@ -357,67 +399,75 @@ class PigeonDetector:
         print(f"Confidence: {self.config.confidence_threshold}")
         print(f"Process Interval: {self.config.process_interval}s")
         print("=" * 60)
-        
+
         # Setup
         self.setup_directories()
-        
+
         if not self.load_model():
             return
-        
+
         if not self.start_ffmpeg_stream():
             return
-        
+
         print("=" * 60)
         print("Waiting for stream... (this may take a few seconds)")
         print("=" * 60)
-        
+
         # Initialize timing
         self.stats.start_time = time.time()
         self.last_process_time = 0.0
-        
+
         try:
             while True:
+                # Check for shutdown signal
+                if shutdown_requested:
+                    print("[INFO] Graceful shutdown initiated...")
+                    break
+
                 # Read raw frame (MUST read all frames or pipe blocks)
                 raw_frame = self.read_frame()
                 if raw_frame is None:
                     print("Stream ended or incomplete frame")
                     break
-                
+
                 # First frame info
                 if self.first_frame:
                     print(f"First frame received! Size: {self.config.frame_width}x{self.config.frame_height}")
                     print(f"Processing 1 frame per {self.config.process_interval} second(s)")
                     print()
                     self.first_frame = False
-                
+
                 self.stats.frames_received += 1
-                
+
                 # Skip frame if not enough time has passed
                 if not self.should_process_frame():
                     continue
-                
+
                 self.stats.frames_processed += 1
-                
+
                 # Convert frame only when we need to process it
                 frame = self.convert_frame(raw_frame)
-                
+
                 # Save frame if enabled
                 self.save_frame(frame)
-                
+
                 # Run detection
                 result = self.detect_pigeons(frame)
-                
+
                 # Process detections
                 self.process_detection(result, frame)
-                
+
+                # Print JSON stats after every processed frame (for parent to parse)
+                self.print_json_stats()
+
                 # Periodic stats
-                if (self.stats.frames_processed > 0 and 
+                if (self.stats.frames_processed > 0 and
                     self.stats.frames_processed % self.config.stats_interval == 0):
                     self.print_stats()
-        
+
         except KeyboardInterrupt:
             print("\nStopping...")
-        
+
         finally:
             self.cleanup()
             self.print_summary()
@@ -425,8 +475,37 @@ class PigeonDetector:
 
 def main() -> None:
     """Main entry point for the detection script."""
+    import argparse
+    global shutdown_requested
+
+    # Reset shutdown flag for clean state
+    shutdown_requested = False
+
+    parser = argparse.ArgumentParser(description='Pigeon Detection from Video Stream')
+    parser.add_argument('--stream', type=str, help='Path to SDP file for stream')
+    parser.add_argument('--flight-id', type=int, help='Flight ID for database')
+    parser.add_argument('--save-detections', action='store_true', help='Save detection images')
+    parser.add_argument('--save-all-frames', action='store_true', help='Save all frames')
+    parser.add_argument('--confidence', type=float, default=0.5, help='Detection confidence threshold')
+
+    args = parser.parse_args()
+
+    # Create config with command-line arguments
     config = DetectionConfig()
-    
+
+    if args.stream:
+        config.sdp_file = args.stream
+    if args.save_detections:
+        config.save_detections = True
+    if args.save_all_frames:
+        config.save_all_frames = True
+    if args.confidence:
+        config.confidence_threshold = args.confidence
+
+    # Note: flight_id would be used for database integration (not implemented yet)
+    if args.flight_id:
+        print(f"Flight ID: {args.flight_id}")
+
     detector = PigeonDetector(config)
     detector.run()
 

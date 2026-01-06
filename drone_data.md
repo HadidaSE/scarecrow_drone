@@ -183,7 +183,7 @@ gst-launch-1.0 -v \
   videoconvert ! \
   jpegenc quality=85 ! \
   rtpjpegpay ! \
-  udpsink host=192.168.1.3 port=5000
+  udpsink host=192.168.1.2 port=5000
 ```
 
 **On Windows PC (with VLC):**

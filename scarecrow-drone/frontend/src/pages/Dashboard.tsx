@@ -140,10 +140,11 @@ const Dashboard: React.FC = () => {
       if (result.success) {
         setDroneStatus((prev) => ({ ...prev, isFlying: false }));
         setFlightStartTime(null);
-        // Show pigeon count if available
+        // Show detection stats if available
         if (result.pigeonsDetected !== undefined) {
           setError(null);
-          alert(`Flight completed!\nPigeons detected: ${result.pigeonsDetected} frames`);
+          const framesMsg = result.framesProcessed ? `\nFrames processed: ${result.framesProcessed}` : '';
+          alert(`Flight completed!\nPigeons detected: ${result.pigeonsDetected} frames${framesMsg}`);
         }
       } else {
         setError('Failed to stop flight');
@@ -159,10 +160,11 @@ const Dashboard: React.FC = () => {
       if (result.success) {
         setDroneStatus((prev) => ({ ...prev, isFlying: false }));
         setFlightStartTime(null);
-        // Show pigeon count if available
+        // Show detection stats if available
         if (result.pigeonsDetected !== undefined) {
           setError(null);
-          alert(`Flight aborted!\nPigeons detected: ${result.pigeonsDetected} frames`);
+          const framesMsg = result.framesProcessed ? `\nFrames processed: ${result.framesProcessed}` : '';
+          alert(`Flight aborted!\nPigeons detected: ${result.pigeonsDetected} frames${framesMsg}`);
         }
       } else {
         setError(result.error || 'Failed to abort mission');

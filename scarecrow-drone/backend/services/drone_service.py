@@ -41,10 +41,22 @@ class DroneService:
         # Create flight record in database
         flight_id = self.drone_repository.start_flight()
 
-        # Start detection BEFORE flight (so it's ready when drone starts)
+        # Start video stream from drone
+        stream_result = self.connection_service.start_video_stream()
+        if not stream_result.get("success"):
+            print(f"[Warning] Video stream failed to start: {stream_result.get('error')}")
+            return {
+                "success": False,
+                "flightId": str(flight_id),
+                "error": f"Video stream failed: {stream_result.get('error')}"
+            }
+
+        # Start detection AFTER stream starts (so it's ready when drone starts)
         detection_result = self.detection_service.start_detection(flight_id)
         if not detection_result.get("success"):
             print(f"[Warning] Detection failed to start: {detection_result.get('error')}")
+            # Stop the stream if detection fails
+            self.connection_service.stop_video_stream()
             return {
                 "success": False,
                 "flightId": str(flight_id),
@@ -93,6 +105,12 @@ class DroneService:
         # Stop detection and get count
         detection_result = self.detection_service.stop_detection()
         pigeon_count = detection_result.get("detection_count", 0)
+        frames_processed = detection_result.get("frames_processed", 0)
+
+        # Stop video stream from drone
+        stream_result = self.connection_service.stop_video_stream()
+        if not stream_result.get("success"):
+            print(f"[Warning] Failed to stop video stream: {stream_result.get('error')}")
 
         # Command drone to return to starting position (COMMENTED OUT FOR TESTING)
         # result = self.connection_service.return_home()
@@ -104,13 +122,16 @@ class DroneService:
             self.drone_repository.end_flight('completed')
             return {
                 "success": True,
-                "pigeonsDetected": pigeon_count
+                "pigeonsDetected": pigeon_count,
+                "framesProcessed": frames_processed,
+                "message": f"Flight completed. Processed {frames_processed} frames, detected {pigeon_count} pigeons."
             }
         else:
             return {
                 "success": False,
                 "error": result.get("error", "Failed to return home"),
-                "pigeonsDetected": pigeon_count
+                "pigeonsDetected": pigeon_count,
+                "framesProcessed": frames_processed
             }
 
     async def abort_mission(self) -> dict:
@@ -124,6 +145,12 @@ class DroneService:
         # Stop detection
         detection_result = self.detection_service.stop_detection()
         pigeon_count = detection_result.get("detection_count", 0)
+        frames_processed = detection_result.get("frames_processed", 0)
+
+        # Stop video stream from drone
+        stream_result = self.connection_service.stop_video_stream()
+        if not stream_result.get("success"):
+            print(f"[Warning] Failed to stop video stream: {stream_result.get('error')}")
 
         # Command drone to abort (COMMENTED OUT FOR TESTING)
         # result = self.connection_service.abort_mission()
@@ -136,12 +163,15 @@ class DroneService:
                 self.drone_repository.end_flight('aborted')
             return {
                 "success": True,
-                "pigeonsDetected": pigeon_count
+                "pigeonsDetected": pigeon_count,
+                "framesProcessed": frames_processed,
+                "message": f"Flight aborted. Processed {frames_processed} frames, detected {pigeon_count} pigeons."
             }
         else:
             return {
                 "success": False,
                 "error": result.get("error", "Failed to abort mission"),
-                "pigeonsDetected": pigeon_count
+                "pigeonsDetected": pigeon_count,
+                "framesProcessed": frames_processed
             }
 
