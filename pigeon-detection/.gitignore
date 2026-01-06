@@ -1,0 +1,15 @@
+# Datasets (too large for git, download from Roboflow)
+data/
+
+# Trained models (large .pt files)
+models/
+
+# Training outputs
+runs/
+
+# Test results (generated images)
+test_results/
+
+# Python
+__pycache__/
+*.pyc
