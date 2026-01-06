@@ -54,7 +54,7 @@ export const droneApi = {
   },
 
   // Stop flight (return home)
-  stopFlight: async (): Promise<{ success: boolean }> => {
+  stopFlight: async (): Promise<{ success: boolean; pigeonsDetected?: number }> => {
     const response = await fetch(`${API_BASE_URL}/drone/stop`, {
       method: 'POST',
     });
@@ -73,7 +73,7 @@ export const droneApi = {
   },
 
   // Emergency abort - terminate all tasks immediately
-  abortMission: async (): Promise<{ success: boolean; error?: string }> => {
+  abortMission: async (): Promise<{ success: boolean; error?: string; pigeonsDetected?: number }> => {
     const response = await fetch(`${API_BASE_URL}/drone/abort`, {
       method: 'POST',
     });

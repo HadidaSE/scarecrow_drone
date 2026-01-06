@@ -14,7 +14,7 @@ class ConnectionService:
     _instance = None
 
     # Set to True to simulate drone connection without actual hardware
-    MOCK_MODE = True
+    MOCK_MODE = False
 
     # Drone network settings
     DRONE_SSID_PREFIX = "CR_AP"  # WiFi network name prefix of the drone

@@ -330,6 +330,41 @@ body {
 
 /* Flight Status */
 .flight-status {
+  margin-top: 20px;
+  padding: 20px;
+  background: linear-gradient(135deg, rgba(60,80,60,0.3) 0%, rgba(40,60,40,0.3) 100%);
+  border: 1px solid #4a5a3a;
+  border-radius: 4px;
+}
+
+.flight-timer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+  margin-bottom: 15px;
+  padding: 15px;
+  background: rgba(0,0,0,0.3);
+  border-radius: 3px;
+}
+
+.timer-label {
+  color: #909090;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  font-size: 0.85rem;
+}
+
+.timer-value {
+  color: #8b9a5b;
+  font-size: 1.8rem;
+  font-weight: bold;
+  font-family: 'Courier New', monospace;
+  letter-spacing: 3px;
+  text-shadow: 0 0 10px rgba(139, 154, 91, 0.5);
+}
+
+.flight-indicator {
   display: flex;
   align-items: center;
   justify-content: center;

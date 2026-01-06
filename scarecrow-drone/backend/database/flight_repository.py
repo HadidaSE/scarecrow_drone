@@ -105,7 +105,7 @@ class FlightRepository:
             "id": str(row['flight_id']),
             "date": start_time,
             "duration": duration,
-            "pigeons_detected": 0,  # No pigeon detection data in telemetry table yet
+            "pigeons_detected": 0,
             "status": row['status'],
             "start_time": start_time_only,
             "end_time": end_time_only

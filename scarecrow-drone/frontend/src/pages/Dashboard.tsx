@@ -21,6 +21,7 @@ const Dashboard: React.FC = () => {
   const [loadingSummary, setLoadingSummary] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
+  const [flightStartTime, setFlightStartTime] = useState<Date | null>(null);
 
   // Check connection status periodically
   useEffect(() => {
@@ -54,13 +55,17 @@ const Dashboard: React.FC = () => {
   }, []);
 
   // Fetch drone status when SSH is connected
+  // But don't override local flight state when we've started a flight
   useEffect(() => {
     if (!connectionStatus.sshConnected) return;
 
     const fetchStatus = async () => {
       try {
         const status = await droneApi.getStatus();
-        setDroneStatus(status);
+        // Only update if we're not in a local flight
+        if (!flightStartTime) {
+          setDroneStatus(status);
+        }
         setError(null);
       } catch (err) {
         // Keep last known status
@@ -70,7 +75,7 @@ const Dashboard: React.FC = () => {
     fetchStatus();
     const interval = setInterval(fetchStatus, 2000);
     return () => clearInterval(interval);
-  }, [connectionStatus.sshConnected]);
+  }, [connectionStatus.sshConnected, flightStartTime]);
 
   // Fetch flight history
   useEffect(() => {
@@ -120,6 +125,7 @@ const Dashboard: React.FC = () => {
       const result = await droneApi.startFlight();
       if (result.success) {
         setDroneStatus((prev) => ({ ...prev, isFlying: true }));
+        setFlightStartTime(new Date());
       } else {
         setError('Failed to start flight');
       }
@@ -133,6 +139,12 @@ const Dashboard: React.FC = () => {
       const result = await droneApi.stopFlight();
       if (result.success) {
         setDroneStatus((prev) => ({ ...prev, isFlying: false }));
+        setFlightStartTime(null);
+        // Show pigeon count if available
+        if (result.pigeonsDetected !== undefined) {
+          setError(null);
+          alert(`Flight completed!\nPigeons detected: ${result.pigeonsDetected} frames`);
+        }
       } else {
         setError('Failed to stop flight');
       }
@@ -146,6 +158,12 @@ const Dashboard: React.FC = () => {
       const result = await droneApi.abortMission();
       if (result.success) {
         setDroneStatus((prev) => ({ ...prev, isFlying: false }));
+        setFlightStartTime(null);
+        // Show pigeon count if available
+        if (result.pigeonsDetected !== undefined) {
+          setError(null);
+          alert(`Flight aborted!\nPigeons detected: ${result.pigeonsDetected} frames`);
+        }
       } else {
         setError(result.error || 'Failed to abort mission');
       }
@@ -208,6 +226,7 @@ const Dashboard: React.FC = () => {
             onStopFlight={handleStopFlight}
             onAbortMission={handleAbortMission}
             isConnecting={isConnecting}
+            flightStartTime={flightStartTime}
           />
         ) : (
           <FlightHistory
