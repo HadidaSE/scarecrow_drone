@@ -76,11 +76,14 @@ class DetectionConfig:
     detections_dir: str = "pigeon_detections"
     save_detections: bool = True
     save_all_frames: bool = False
+    save_video: bool = False  # Enable video recording
+    video_recordings_dir: str = "recordings"  # Video recording directory
     process_interval: float = 0.1  # Process 10 frames per second (faster processing)
     frame_width: int = 640
     frame_height: int = 480
     ffmpeg_buffer_size: int = 10**8
     stats_interval: int = 30  # Print stats every N processed frames
+    flight_id: Optional[int] = None  # Flight ID for video filename
 
 
 @dataclass
@@ -92,6 +95,7 @@ class DetectionStats:
     detections_count: int = 0
     total_pigeons: int = 0
     start_time: float = 0.0
+    video_file_path: Optional[str] = None
     
     def get_elapsed_time(self) -> float:
         """Get elapsed time since start."""
@@ -129,6 +133,8 @@ class PigeonDetector:
         self.detections_dir: Optional[Path] = None
         self.last_process_time: float = 0.0
         self.first_frame: bool = True
+        self.video_file_path: Optional[Path] = None
+        self.video_file_relative: Optional[str] = None
     
     def setup_directories(self) -> None:
         """Setup output directories for frames and detections."""
@@ -163,23 +169,60 @@ class PigeonDetector:
     def start_ffmpeg_stream(self) -> bool:
         """
         Start ffmpeg subprocess to decode RTP stream.
+        Optionally records video to file while streaming frames for detection.
         
         Returns:
             True if ffmpeg started successfully, False otherwise.
         """
         print("Starting ffmpeg to decode stream...")
         
+        # Setup video recording path if enabled
+        if self.config.save_video:
+            recordings_dir = Path(self.config.video_recordings_dir)
+            recordings_dir.mkdir(exist_ok=True)
+            
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            if self.config.flight_id:
+                filename = f"flight_{self.config.flight_id}_{timestamp}.mp4"
+            else:
+                filename = f"flight_{timestamp}.mp4"
+            
+            # Store absolute path for FFmpeg, but keep relative for database
+            self.video_file_path = (recordings_dir / filename).absolute()
+            self.video_file_relative = f"recordings/{filename}"
+            self.stats.video_file_path = self.video_file_relative
+            print(f"[DEBUG] Video recording enabled")
+            print(f"[DEBUG] Absolute path: {self.video_file_path}")
+            print(f"[DEBUG] Relative path: {self.video_file_relative}")
+        
+        # Build FFmpeg command with optional video output
         ffmpeg_cmd = [
             'ffmpeg',
             '-hide_banner',
             '-loglevel', 'error',
             '-protocol_whitelist', 'file,udp,rtp',
-            '-i', self.config.sdp_file,
+            '-i', self.config.sdp_file
+        ]
+        
+        # Add video recording output if enabled
+        if self.config.save_video and self.video_file_path:
+            ffmpeg_cmd.extend([
+                '-c:v', 'libx264',
+                '-preset', 'ultrafast',
+                '-tune', 'zerolatency',
+                '-movflags', '+faststart',
+                '-f', 'mp4',
+                '-y',
+                str(self.video_file_path)
+            ])
+        
+        # Add raw video output for detection (always enabled)
+        ffmpeg_cmd.extend([
             '-f', 'rawvideo',
             '-pix_fmt', 'bgr24',
             '-an',
             'pipe:1'
-        ]
+        ])
         
         try:
             self.ffmpeg_process = subprocess.Popen(
@@ -307,8 +350,8 @@ class PigeonDetector:
             cv2.imwrite(str(filename), annotated)
             print(f"            Saved: {filename.name}")
             
-            # Print image path for parent process to capture
-            print(f"DETECTION_IMAGE:{filename}")
+            # Print image path for parent process to capture (use absolute path)
+            print(f"DETECTION_IMAGE:{filename.absolute()}")
         
         return num_pigeons
     
@@ -331,7 +374,8 @@ class PigeonDetector:
             "detections_count": self.stats.detections_count,
             "total_pigeons": self.stats.total_pigeons,
             "duration_seconds": round(elapsed, 2),
-            "average_fps": round(self.stats.get_process_fps(), 2)
+            "average_fps": round(self.stats.get_process_fps(), 2),
+            "video_file_path": self.stats.video_file_path
         }
         print(f"DETECTION_RESULT_JSON:{json.dumps(result)}")
     
@@ -376,9 +420,23 @@ class PigeonDetector:
     
     def cleanup(self) -> None:
         """Cleanup resources and terminate ffmpeg process."""
+        import sys
+        
         if self.ffmpeg_process:
             self.ffmpeg_process.terminate()
             self.ffmpeg_process.wait()
+        
+        # Log video file status if recording was enabled
+        if self.config.save_video and self.video_file_path:
+            time.sleep(1)  # Give filesystem time to finalize
+            if self.video_file_path.exists():
+                file_size_mb = self.video_file_path.stat().st_size / (1024 * 1024)
+                print(f"[VIDEO] Recording saved: {self.video_file_path}", flush=True)
+                print(f"[VIDEO] Size: {file_size_mb:.2f} MB", flush=True)
+            else:
+                print(f"[WARNING] Video file does not exist: {self.video_file_path}", flush=True)
+        
+        sys.stdout.flush()  # Final flush before exit
 
     def run(self) -> None:
         """Main detection loop."""
@@ -395,6 +453,7 @@ class PigeonDetector:
         print(f"Model: {self.config.model_path}")
         print(f"Confidence: {self.config.confidence_threshold}")
         print(f"Process Interval: {self.config.process_interval}s")
+        print(f"Video Recording: {'Enabled' if self.config.save_video else 'Disabled'}")
         print("=" * 60)
 
         # Setup
@@ -483,6 +542,7 @@ def main() -> None:
     parser.add_argument('--flight-id', type=int, help='Flight ID for database')
     parser.add_argument('--save-detections', action='store_true', help='Save detection images')
     parser.add_argument('--save-all-frames', action='store_true', help='Save all frames')
+    parser.add_argument('--save-video', action='store_true', help='Record video of the flight')
     parser.add_argument('--confidence', type=float, default=0.5, help='Detection confidence threshold')
 
     args = parser.parse_args()
@@ -496,11 +556,12 @@ def main() -> None:
         config.save_detections = True
     if args.save_all_frames:
         config.save_all_frames = True
+    if args.save_video:
+        config.save_video = True
     if args.confidence:
         config.confidence_threshold = args.confidence
-
-    # Note: flight_id would be used for database integration (not implemented yet)
     if args.flight_id:
+        config.flight_id = args.flight_id
         print(f"Flight ID: {args.flight_id}")
 
     detector = PigeonDetector(config)

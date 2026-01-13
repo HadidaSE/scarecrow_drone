@@ -30,11 +30,27 @@ class DetectionService:
         self._current_flight_id: Optional[int] = None
         self._detection_count = 0
         self._drone_repository = DroneRepository()
+        self._stdout_buffer: list = []  # Buffer to store stdout lines
+        self._reader_thread: Optional[threading.Thread] = None
         
         # Path to detection script
         self._project_root = Path(__file__).parent.parent.parent.parent
         self._detection_script = self._project_root / "live_detection" / "detect.py"
         self._drone_sdp = self._project_root / "live_detection" / "drone.sdp"
+    
+    def _read_stdout_continuously(self):
+        """Background thread to continuously read stdout and prevent pipe buffer overflow."""
+        if not self._detection_process:
+            return
+        
+        try:
+            for line in iter(self._detection_process.stdout.readline, ''):
+                if line:
+                    self._stdout_buffer.append(line)
+                if self._detection_process.poll() is not None:
+                    break
+        except Exception as e:
+            print(f"[WARNING] Error reading stdout: {e}")
         
     def start_detection(self, flight_id: int, stream_source: str = "drone") -> dict:
         """
@@ -105,13 +121,14 @@ class DetectionService:
             # The detect.py script will handle video stream and detection
             print(f"[INFO] Starting detection subprocess...")
             print(f"[INFO] Detection script: {self._detection_script}")
-            print(f"[INFO] Args: --stream {sdp_file} --flight-id {flight_id} --save-detections")
+            print(f"[INFO] Args: --stream {sdp_file} --flight-id {flight_id} --save-detections --save-video")
             
             self._detection_process = subprocess.Popen(
                 [str(python_exe), "-u", str(self._detection_script),
                  "--stream", str(sdp_file),
                  "--flight-id", str(flight_id),
-                 "--save-detections"],
+                 "--save-detections",
+                 "--save-video"],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True,
@@ -120,6 +137,11 @@ class DetectionService:
             
             self._current_flight_id = flight_id
             self._detection_count = 0
+            
+            # Clear stdout buffer and start reader thread
+            self._stdout_buffer = []
+            self._reader_thread = threading.Thread(target=self._read_stdout_continuously, daemon=True)
+            self._reader_thread.start()
             
             print(f"[SUCCESS] Detection process started with PID: {self._detection_process.pid}")
             print(f"[INFO] Detection is now listening for video stream...")
@@ -164,7 +186,15 @@ class DetectionService:
 
             try:
                 print("[INFO] Waiting for detection process to finish...")
-                stdout, stderr = self._detection_process.communicate(timeout=10)
+                # Wait for reader thread to finish
+                if self._reader_thread and self._reader_thread.is_alive():
+                    self._reader_thread.join(timeout=5)
+                
+                # Get remaining output
+                stdout_remaining, stderr = self._detection_process.communicate(timeout=10)
+                
+                # Combine buffered output with any remaining output
+                stdout = ''.join(self._stdout_buffer) + (stdout_remaining or '')
 
                 print(f"[INFO] Detection process output:")
                 if stdout:
@@ -187,7 +217,7 @@ class DetectionService:
                                 print(f"[INFO] Saved image to DB: {image_path}")
                             else:
                                 print(f"[WARNING] Failed to save image to DB: {image_path}")
-
+                
                 # Parse JSON result from detect.py (use LAST occurrence for most recent stats)
                 json_lines = [line for line in stdout.split('\n') if line.startswith('DETECTION_RESULT_JSON:')]
                 if json_lines:
@@ -203,6 +233,25 @@ class DetectionService:
                         duration = detection_result.get('duration_seconds', 0.0)
                         average_fps = detection_result.get('average_fps', 0.0)
                         print(f"[INFO] Parsed JSON result (from {len(json_lines)} updates): {detection_result}")
+                        
+                        # Parse video file path from JSON result and save to database
+                        video_path = detection_result.get('video_file_path')
+                        if video_path and self._current_flight_id:
+                            print(f"[INFO] Video path from JSON: {video_path}")
+                            print(f"[DEBUG] Calling save_video_recording({self._current_flight_id}, '{video_path}')")
+                            success = self._drone_repository.save_video_recording(
+                                self._current_flight_id, 
+                                video_path
+                            )
+                            if success:
+                                print(f"[INFO] Saved video to DB: {video_path}")
+                            else:
+                                print(f"[WARNING] Failed to save video to DB: {video_path}")
+                        elif video_path and not self._current_flight_id:
+                            print(f"[WARNING] _current_flight_id is None, cannot save video")
+                        elif not video_path:
+                            print(f"[INFO] No video path in detection result (video recording may be disabled)")
+                            
                     except Exception as e:
                         print(f"[WARNING] Failed to parse JSON: {e}")
                 else:
