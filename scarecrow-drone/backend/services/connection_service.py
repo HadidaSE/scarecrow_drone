@@ -70,6 +70,10 @@ class ConnectionService:
                     timeout=5
                 )
                 connected = self.DRONE_SSID_PREFIX in result.stdout
+            elif platform.system() == "Darwin":
+                # macOS: check if drone is pingable (simplest approach)
+                # Alternative: use networksetup but it requires admin privileges
+                connected = self.ping_drone()
             else:
                 # Linux: check iwconfig or nmcli
                 result = subprocess.run(
@@ -366,22 +370,21 @@ class ConnectionService:
             print(f"[INFO] Drone IP: {self.DRONE_IP}")
             print(f"[INFO] Stream script: ~/drone_scripts/start_streamb5.sh (30fps)")
 
-            # Run the stream script in the background (using nohup)
-            # This allows the SSH command to return while the stream continues
-            # Using start_streamb5.sh (30fps) instead of start_stream98.sh (15fps) due to negotiation issues
-            ssh_command = [
-                "ssh",
-                "-o", "HostKeyAlgorithms=+ssh-rsa",
-                "-o", "PubkeyAcceptedKeyTypes=+ssh-rsa",
-                "-o", "StrictHostKeyChecking=no",
-                f"{self.DRONE_SSH_USER}@{self.DRONE_IP}",
-                "cd ~/drone_scripts && nohup bash start_stream98.sh > /dev/null 2>&1 &"
-            ]
+            # Run the stream script in the background
+            # Use setsid to detach the process from the SSH session
+            # CRITICAL: The entire backgrounding command must be executed ON THE DRONE
+            # so it's wrapped in the SSH remote command string
+            ssh_command = (
+                f"ssh -o HostKeyAlgorithms=+ssh-rsa -o PubkeyAcceptedKeyTypes=+ssh-rsa "
+                f"-o StrictHostKeyChecking=no {self.DRONE_SSH_USER}@{self.DRONE_IP} "
+                f"\"nohup sh -c 'cd ~/drone_scripts && bash start_stream98.sh' > /tmp/stream.log 2>&1 &\""
+            )
             
-            print(f"[INFO] SSH Command: {' '.join(ssh_command)}")
+            print(f"[INFO] SSH Command: {ssh_command}")
 
             result = subprocess.run(
                 ssh_command,
+                shell=True,
                 capture_output=True,
                 text=True,
                 timeout=10
@@ -395,7 +398,7 @@ class ConnectionService:
 
             if result.returncode == 0:
                 print("[SUCCESS] Video stream command sent successfully!")
-                print("[INFO] Stream should now be active on drone, sending to 192.168.1.2:5000")
+                print("[INFO] Stream should now be active on drone, sending to 192.168.1.2:5005")
                 print("=== VIDEO STREAM STARTED ===")
                 return {"success": True, "output": "Video stream started"}
             else:
