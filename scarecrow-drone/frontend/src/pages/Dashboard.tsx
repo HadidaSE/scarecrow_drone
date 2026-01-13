@@ -327,7 +327,7 @@ const Dashboard: React.FC = () => {
                     <video
                       className="flight-video-player"
                       controls
-                      src={`http://localhost:5001/recordings/${recordingPath.split(/[/\\]/).pop()}`}
+                      src={`http://localhost:5000/recordings/${recordingPath.split(/[/\\]/).pop()}`}
                     >
                       Your browser does not support the video tag.
                     </video>

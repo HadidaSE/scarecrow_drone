@@ -6,7 +6,7 @@ interface DetectionImageGalleryProps {
 }
 
 const DetectionImageGallery: React.FC<DetectionImageGalleryProps> = ({ images }) => {
-  const API_BASE_URL = 'http://localhost:5001';
+  const API_BASE_URL = 'http://localhost:5000';
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   const getImageUrl = (imagePath: string): string => {

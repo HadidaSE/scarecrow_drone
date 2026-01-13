@@ -1,6 +1,6 @@
 import { Flight, DroneStatus, ConnectionStatus, FlightSummary } from '../types/flight';
 
-const API_BASE_URL = 'http://localhost:5001/api';
+const API_BASE_URL = 'http://localhost:5000/api';
 
 export const droneApi = {
   // Check WiFi connection to drone
