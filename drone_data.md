@@ -142,6 +142,69 @@ scp -O -o HostKeyAlgorithms=+ssh-rsa -o PubkeyAcceptedKeyTypes=+ssh-rsa "C:\path
 - `-o PubkeyAcceptedKeyTypes=+ssh-rsa`: Accepts RSA public keys
 - Target directory: `~/` (root home directory)
 
+## Video Streaming
+
+### Camera Information
+- **Device Path**: `/dev/video13`
+- **Camera Model**: Intel RealSense R200
+- **Default Resolution**: 640x480 @ 30fps
+- **Supported Resolutions**: 320x240, 640x480, 1280x720, 1920x1080
+
+### GStreamer Support
+The Intel Aero has GStreamer 1.0 pre-installed with hardware encoding support.
+
+### Available Video Encoders
+```bash
+# Hardware encoders (best performance)
+vaapih264enc     # VA-API H.264 encoder (Intel hardware)
+vaapih265enc     # VA-API H.265 encoder
+vaapimpeg2enc    # VA-API MPEG-2 encoder
+vaapijpegenc     # VA-API JPEG encoder
+vaapivp8enc      # VA-API VP8 encoder
+
+# Software encoders
+jpegenc          # JPEG image encoder
+theoraenc        # Theora video encoder
+pngenc           # PNG image encoder
+webpenc          # WEBP image encoder
+```
+
+### Live Streaming to PC (Recommended Method)
+
+**On Drone:**
+```bash
+# Kill mavlink_bridge first
+killall python2
+
+# Stream via UDP using JPEG encoding (RTP/JPEG)
+gst-launch-1.0 -v \
+  v4l2src device=/dev/video13 ! \
+  video/x-raw,width=640,height=480,framerate=15/1 ! \
+  videoconvert ! \
+  jpegenc quality=85 ! \
+  rtpjpegpay ! \
+  udpsink host=192.168.1.2 port=5000
+```
+
+**On Windows PC (with VLC):**
+```powershell
+# Using SDP file (recommended)
+vlc drone.sdp
+```
+
+### Checking Stream Status
+
+```bash
+# Check if stream is running
+ps | grep gst-launch
+
+# Monitor network traffic
+ifconfig wlan0
+
+# Test camera availability
+ls -l /dev/video*
+```
+
 ## Flight Control
 
 ### Flight Modes
@@ -276,6 +339,9 @@ vi filename
 - `json` - JSON encoding/decoding
 - `time` - Time functions
 - `math` - Mathematical functions
+- `gstreamer1.0` - Media streaming framework
+- `gstreamer1.0-vaapi` - Hardware video encoding/decoding
+- `opencv-python` - Computer vision library (with GStreamer support)
 
 ## Created Scripts
 
@@ -382,6 +448,39 @@ except:
 - [ ] Is the drone in the correct mode (GUIDED for autonomous)?
 - [ ] Did you initialize the altitude filter before use?
 - [ ] Are you handling MAVLink errors properly?
+- [ ] Is the camera device available (`/dev/video13`)?
+- [ ] Is another process using the camera? (check with `ps | grep gst`)
+
+## Video Streaming Troubleshooting
+
+### No Video Stream
+```bash
+# Check camera device
+ls -l /dev/video*
+
+# Test camera with simple capture
+gst-launch-1.0 v4l2src device=/dev/video13 num-buffers=1 ! fakesink
+
+# Kill any processes using camera
+killall python2
+killall gst-launch-1.0
+```
+
+### Choppy/Laggy Stream
+- Reduce bitrate: Change `bitrate=1200` to `bitrate=800`
+- Lower resolution: Use 320x240 instead of 640x480
+- Check WiFi signal strength: Move closer to drone
+- Reduce VLC caching: Use `--network-caching=0`
+
+### Stream Disconnects
+- Increase bitrate control buffer
+- Use TCP instead of UDP (add `protocol=tcp` to udpsink)
+- Check PC IP is correct (should be 192.168.1.2)
+
+### "No element" Error
+- Check encoder availability: `gst-inspect-1.0 vaapih264enc`
+- Use alternative encoder if needed (jpegenc for MJPEG)
+- Install missing plugins: `opkg install gstreamer1.0-plugins-bad`
 
 ## Future Improvements
 
@@ -390,12 +489,15 @@ except:
 2. Implement waypoint navigation
 3. Add obstacle detection integration
 4. Log flight data to database
-5. Implement real-time video streaming
-6. Add pigeon detection integration
+5. ~~Implement real-time video streaming~~ ✅ **COMPLETED**
+6. Add pigeon detection integration with live stream
 7. Create web-based mission planner
-8. Add telemetry dashboard
+8. Add telemetry dashboard with video overlay
 9. Implement geofencing
 10. Add battery monitoring alerts
+11. Stream telemetry data alongside video (altitude, battery, GPS on OSD)
+12. Implement automatic recording on pigeon detection
+13. Add object tracking overlay on video stream
 
 ### Known Limitations
 - Altitude sensor has drift without GPS

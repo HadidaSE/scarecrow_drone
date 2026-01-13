@@ -4,18 +4,16 @@ echo    Scarecrow Drone - Starting App
 echo ========================================
 echo.
 
-:: Get the directory where the batch file is located
 set "SCRIPT_DIR=%~dp0"
 cd /d "%SCRIPT_DIR%"
 
 :: ========================================
 :: CHECK PYTHON
 :: ========================================
-echo [1/6] Checking Python...
+echo [1/4] Checking Python...
 python --version >nul 2>&1
-if errorlevel 1 (
+if %errorlevel% neq 0 (
     echo ERROR: Python is not installed or not in PATH
-    echo Please install Python from https://www.python.org/downloads/
     pause
     exit /b 1
 )
@@ -24,93 +22,72 @@ echo       Python found.
 :: ========================================
 :: CHECK NODE.JS
 :: ========================================
-echo [2/6] Checking Node.js...
+echo [2/4] Checking Node.js...
 node --version >nul 2>&1
-if errorlevel 1 (
+if %errorlevel% neq 0 (
     echo ERROR: Node.js is not installed or not in PATH
-    echo Please install Node.js from https://nodejs.org/
     pause
     exit /b 1
 )
 echo       Node.js found.
 
 :: ========================================
-:: CHECK/CREATE BACKEND VENV
+:: SETUP BACKEND
 :: ========================================
-echo [3/6] Checking backend virtual environment...
-if not exist "backend\venv\Scripts\python.exe" (
-    echo       Creating virtual environment...
-    cd backend
-    python -m venv venv
-    if errorlevel 1 (
-        echo ERROR: Failed to create virtual environment
-        pause
-        exit /b 1
-    )
-    cd ..
-    echo       Virtual environment created.
-) else (
-    echo       Virtual environment exists.
-)
-
-:: ========================================
-:: INSTALL BACKEND DEPENDENCIES
-:: ========================================
-echo [4/6] Checking backend dependencies...
+echo [3/4] Setting up backend...
 cd backend
-.\venv\Scripts\pip install -q -r requirements.txt 2>nul
-if errorlevel 1 (
-    echo       Installing backend dependencies...
-    .\venv\Scripts\pip install fastapi uvicorn paramiko
+
+if not exist venv (
+    echo       Creating virtual environment...
+    python -m venv venv
 )
+
+echo       Installing/updating dependencies...
+call venv\Scripts\pip.exe install -r requirements.txt >nul 2>&1
+
 cd ..
-echo       Backend dependencies ready.
+echo       Backend ready.
 
 :: ========================================
-:: INSTALL FRONTEND DEPENDENCIES
+:: SETUP FRONTEND
 :: ========================================
-echo [5/6] Checking frontend dependencies...
-if not exist "frontend\node_modules" (
-    echo       Installing frontend dependencies (this may take a minute)...
-    cd frontend
+echo [4/4] Setting up frontend...
+cd frontend
+
+if not exist node_modules (
+    echo       Installing node modules - this may take a few minutes...
     call npm install
-    if errorlevel 1 (
-        echo ERROR: Failed to install frontend dependencies
-        pause
-        exit /b 1
-    )
-    cd ..
-    echo       Frontend dependencies installed.
-) else (
-    echo       Frontend dependencies exist.
 )
+
+cd ..
+echo       Frontend ready.
 
 :: ========================================
 :: START SERVERS
 :: ========================================
-echo [6/6] Starting servers...
+echo.
+echo ========================================
+echo    Starting servers...
+echo ========================================
 echo.
 
-:: Start Backend in new window
-echo Starting Backend (FastAPI) on port 5000...
-start "Scarecrow Backend" cmd /k "cd /d %SCRIPT_DIR%backend && .\venv\Scripts\python.exe -m uvicorn app:app --reload --port 5000"
+echo Starting Backend on port 5000...
+start "Scarecrow Backend" cmd /k "cd /d "%SCRIPT_DIR%backend" && venv\Scripts\python.exe -m uvicorn app:app --reload --port 5000"
 
-:: Wait a moment for backend to initialize
 timeout /t 3 /nobreak >nul
 
-:: Start Frontend in new window
-echo Starting Frontend (React) on port 3000...
-start "Scarecrow Frontend" cmd /k "cd /d %SCRIPT_DIR%frontend && npm start"
+echo Starting Frontend on port 3000...
+start "Scarecrow Frontend" cmd /k "cd /d "%SCRIPT_DIR%frontend" && npm start"
 
 echo.
 echo ========================================
-echo    Both servers starting...
+echo    Servers starting...
 echo ========================================
 echo.
 echo    Backend:  http://localhost:5000
 echo    Frontend: http://localhost:3000
 echo.
 echo    Close the terminal windows to stop.
-echo    Or run stop_app.bat to stop both.
 echo ========================================
+echo.
 pause

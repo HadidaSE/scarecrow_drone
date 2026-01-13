@@ -12,7 +12,7 @@ class FlightRepository:
     def get_all_flights(self) -> List[dict]:
         """Get all flights from database ordered by start_time descending"""
         query = """
-            SELECT flight_id, start_time, end_time, status, notes
+            SELECT flight_id, start_time, end_time, piegeon_detected
             FROM flights
             ORDER BY start_time DESC
         """
@@ -22,7 +22,7 @@ class FlightRepository:
     def get_flight_by_id(self, flight_id: str) -> Optional[dict]:
         """Get a single flight by ID"""
         query = """
-            SELECT flight_id, start_time, end_time, status, notes
+            SELECT flight_id, start_time, end_time, piegeon_detected
             FROM flights
             WHERE flight_id = ?
         """
@@ -34,36 +34,32 @@ class FlightRepository:
     def create_flight(self) -> int:
         """Create a new flight record and return the flight_id"""
         query = """
-            INSERT INTO flights (start_time, status)
-            VALUES (?, 'in_progress')
+            INSERT INTO flights (start_time)
+            VALUES (?)
         """
         start_time = datetime.now().isoformat()
         flight_id = self.db.execute_write(query, (start_time,))
         return flight_id
 
-    def end_flight(self, flight_id: int, status: str = 'completed') -> bool:
-        """End a flight by setting end_time and status"""
+    def end_flight(self, flight_id: int, pigeon_count: int = 0) -> bool:
+        """End a flight by setting end_time and pigeon count"""
         query = """
             UPDATE flights
-            SET end_time = ?, status = ?
+            SET end_time = ?, piegeon_detected = ?
             WHERE flight_id = ?
         """
         end_time = datetime.now().isoformat()
-        self.db.execute_write(query, (end_time, status, flight_id))
+        self.db.execute_write(query, (end_time, pigeon_count, flight_id))
         return True
 
-    def update_flight(self, flight_id: int, flight_data: dict) -> bool:
-        """Update an existing flight record"""
+    def update_pigeon_count(self, flight_id: int, pigeon_count: int) -> bool:
+        """Update the pigeon count for a flight"""
         query = """
             UPDATE flights
-            SET status = ?, notes = ?
+            SET piegeon_detected = ?
             WHERE flight_id = ?
         """
-        self.db.execute_write(query, (
-            flight_data.get('status'),
-            flight_data.get('notes'),
-            flight_id
-        ))
+        self.db.execute_write(query, (pigeon_count, flight_id))
         return True
 
     def delete_flight(self, flight_id: int) -> bool:
@@ -101,12 +97,15 @@ class FlightRepository:
             except:
                 pass
 
+        # Determine status based on end_time
+        status = "completed" if end_time else "in_progress"
+
         return {
             "id": str(row['flight_id']),
             "date": start_time,
             "duration": duration,
-            "pigeons_detected": 0,  # No pigeon detection data in telemetry table yet
-            "status": row['status'],
+            "pigeons_detected": row['piegeon_detected'] if row['piegeon_detected'] is not None else 0,
+            "status": status,
             "start_time": start_time_only,
             "end_time": end_time_only
         }

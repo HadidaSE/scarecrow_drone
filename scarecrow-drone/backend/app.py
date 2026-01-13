@@ -1,5 +1,7 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from pathlib import Path
 from controllers.drone_controller import drone_router
 from controllers.flight_controller import flight_router
 from controllers.connection_controller import connection_router
@@ -12,6 +14,13 @@ connection_service = ConnectionService()
 
 # Wire up ConnectionService to DroneConnection for SSH data updates
 connection_service.set_drone_connection(drone_connection)
+
+# Mount detection images directory as static files
+# This allows frontend to access images at: http://localhost:5000/detection_images/...
+# Path: backend/app.py -> scarecrow-drone/ -> final project/ -> live_detection/pigeon_detections
+detection_images_path = Path(__file__).parent.parent.parent / "live_detection" / "pigeon_detections"
+detection_images_path.mkdir(parents=True, exist_ok=True)
+app.mount("/detection_images", StaticFiles(directory=str(detection_images_path)), name="detection_images")
 
 # CORS middleware
 app.add_middleware(

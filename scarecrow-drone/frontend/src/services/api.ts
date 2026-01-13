@@ -54,7 +54,7 @@ export const droneApi = {
   },
 
   // Stop flight (return home)
-  stopFlight: async (): Promise<{ success: boolean }> => {
+  stopFlight: async (): Promise<{ success: boolean; pigeonsDetected?: number; framesProcessed?: number; message?: string }> => {
     const response = await fetch(`${API_BASE_URL}/drone/stop`, {
       method: 'POST',
     });
@@ -73,7 +73,7 @@ export const droneApi = {
   },
 
   // Emergency abort - terminate all tasks immediately
-  abortMission: async (): Promise<{ success: boolean; error?: string }> => {
+  abortMission: async (): Promise<{ success: boolean; error?: string; pigeonsDetected?: number; framesProcessed?: number; message?: string }> => {
     const response = await fetch(`${API_BASE_URL}/drone/abort`, {
       method: 'POST',
     });
@@ -103,5 +103,14 @@ export const droneApi = {
     if (!response.ok)
       throw new Error('Failed to get flight summary');
     return response.json();
+  },
+
+  // Get detection images for a flight
+  getDetectionImages: async (flightId: string): Promise<string[]> => {
+    const response = await fetch(`${API_BASE_URL}/flights/${flightId}/images`);
+    if (!response.ok)
+      throw new Error('Failed to get detection images');
+    const data = await response.json();
+    return data.images || [];
   },
 };

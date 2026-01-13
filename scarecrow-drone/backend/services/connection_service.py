@@ -14,7 +14,7 @@ class ConnectionService:
     _instance = None
 
     # Set to True to simulate drone connection without actual hardware
-    MOCK_MODE = True
+    MOCK_MODE = False
 
     # Drone network settings
     DRONE_SSID_PREFIX = "CR_AP"  # WiFi network name prefix of the drone
@@ -346,6 +346,115 @@ class ConnectionService:
         except subprocess.TimeoutExpired:
             return {"success": False, "error": "Flight timed out"}
         except Exception as e:
+            return {"success": False, "error": str(e)}
+
+    def start_video_stream(self) -> dict:
+        """Start video stream from drone to PC"""
+        print("\n=== STARTING VIDEO STREAM ===")
+        print(f"SSH Connected: {self._ssh_connected}")
+        
+        if not self._ssh_connected:
+            print("[ERROR] Cannot start stream - SSH not connected!")
+            return {"success": False, "error": "Not connected to drone"}
+
+        if self.MOCK_MODE:
+            print(f"[MOCK] Starting video stream")
+            return {"success": True, "output": "[MOCK] Video stream started"}
+
+        try:
+            print(f"[INFO] Executing SSH command to start stream on drone...")
+            print(f"[INFO] Drone IP: {self.DRONE_IP}")
+            print(f"[INFO] Stream script: ~/drone_scripts/start_streamb5.sh (30fps)")
+
+            # Run the stream script in the background (using nohup)
+            # This allows the SSH command to return while the stream continues
+            # Using start_streamb5.sh (30fps) instead of start_stream98.sh (15fps) due to negotiation issues
+            ssh_command = [
+                "ssh",
+                "-o", "HostKeyAlgorithms=+ssh-rsa",
+                "-o", "PubkeyAcceptedKeyTypes=+ssh-rsa",
+                "-o", "StrictHostKeyChecking=no",
+                f"{self.DRONE_SSH_USER}@{self.DRONE_IP}",
+                "cd ~/drone_scripts && nohup bash start_stream98.sh > /dev/null 2>&1 &"
+            ]
+            
+            print(f"[INFO] SSH Command: {' '.join(ssh_command)}")
+
+            result = subprocess.run(
+                ssh_command,
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
+            
+            print(f"[INFO] SSH command returned with code: {result.returncode}")
+            if result.stdout:
+                print(f"[INFO] STDOUT: {result.stdout}")
+            if result.stderr:
+                print(f"[INFO] STDERR: {result.stderr}")
+
+            if result.returncode == 0:
+                print("[SUCCESS] Video stream command sent successfully!")
+                print("[INFO] Stream should now be active on drone, sending to 192.168.1.2:5000")
+                print("=== VIDEO STREAM STARTED ===")
+                return {"success": True, "output": "Video stream started"}
+            else:
+                print(f"[ERROR] Stream failed to start! Return code: {result.returncode}")
+                return {"success": False, "error": result.stderr or "Stream failed to start"}
+
+        except subprocess.TimeoutExpired:
+            print("[ERROR] Stream command timed out!")
+            return {"success": False, "error": "Stream command timed out"}
+        except Exception as e:
+            print(f"[ERROR] Exception starting stream: {str(e)}")
+            return {"success": False, "error": str(e)}
+
+    def stop_video_stream(self) -> dict:
+        """Stop video stream from drone"""
+        print("\n=== STOPPING VIDEO STREAM ===")
+        
+        if not self._ssh_connected:
+            print("[ERROR] Cannot stop stream - SSH not connected!")
+            return {"success": False, "error": "Not connected to drone"}
+
+        if self.MOCK_MODE:
+            print(f"[MOCK] Stopping video stream")
+            return {"success": True, "output": "[MOCK] Video stream stopped"}
+
+        try:
+            print(f"[INFO] Killing gst-launch-1.0 process on drone...")
+            # Kill gst-launch-1.0 process running the stream
+            # Note: Yocto Linux does NOT have pkill, must use killall
+            ssh_command = [
+                "ssh",
+                "-o", "HostKeyAlgorithms=+ssh-rsa",
+                "-o", "PubkeyAcceptedKeyTypes=+ssh-rsa",
+                "-o", "StrictHostKeyChecking=no",
+                f"{self.DRONE_SSH_USER}@{self.DRONE_IP}",
+                "killall gst-launch-1.0"
+            ]
+
+            result = subprocess.run(
+                ssh_command,
+                capture_output=True,
+                text=True,
+                timeout=10
+            )
+
+            print(f"[INFO] Kill command returned with code: {result.returncode}")
+            if result.stderr and result.returncode != 0:
+                print(f"[WARNING] stderr: {result.stderr}")
+            print("[SUCCESS] Video stream stopped")
+            print("=== VIDEO STREAM STOPPED ===")
+
+            # killall returns 0 if process was found and killed
+            return {"success": True, "output": "Video stream stopped"}
+
+        except subprocess.TimeoutExpired:
+            print("[ERROR] Stop command timed out!")
+            return {"success": False, "error": "Stop command timed out"}
+        except Exception as e:
+            print(f"[ERROR] Exception stopping stream: {str(e)}")
             return {"success": False, "error": str(e)}
 
     def return_home(self) -> dict:
