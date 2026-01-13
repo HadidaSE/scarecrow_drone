@@ -6,6 +6,7 @@ export interface Flight {
   status: 'completed' | 'in_progress' | 'failed';
   startTime: string;
   endTime?: string;
+  detectionImages?: string[]; // Array of image paths
 }
 
 export interface DroneStatus {

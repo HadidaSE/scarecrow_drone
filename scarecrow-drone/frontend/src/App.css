@@ -491,6 +491,33 @@ body {
   color: #8b9a5b !important;
 }
 
+/* Flight card wrapper for expandable content */
+.flight-card-wrapper {
+  margin-bottom: 10px;
+}
+
+.flight-card.selected {
+  border-color: #8b9a5b;
+  background: linear-gradient(180deg, #353535 0%, #2a2a2a 100%);
+  box-shadow: 0 0 15px rgba(139, 154, 91, 0.3);
+}
+
+.flight-images-section {
+  background: #1a1a1a;
+  border: 1px solid #3a3a3a;
+  border-top: none;
+  border-radius: 0 0 2px 2px;
+  padding: 15px;
+  margin-top: -10px;
+}
+
+.loading {
+  text-align: center;
+  padding: 20px;
+  color: #909090;
+  font-style: italic;
+}
+
 /* Modal */
 .modal-overlay {
   position: fixed;

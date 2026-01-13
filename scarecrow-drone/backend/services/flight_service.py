@@ -28,6 +28,14 @@ class FlightService:
             return self._format_flight(flight)
         return None
 
+    def get_detection_images(self, flight_id: str) -> List[str]:
+        """
+        Get all detection image paths for a flight
+        Returns: Array of image paths
+        """
+        images = self.drone_repository.get_detection_images(int(flight_id))
+        return images
+
     def get_flight_summary(self, flight_id: str) -> Optional[dict]:
         """
         Get flight summary with stats calculated from telemetry

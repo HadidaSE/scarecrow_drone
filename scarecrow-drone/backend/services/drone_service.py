@@ -80,8 +80,9 @@ class DroneService:
             # Flight failed - stop detection if it was started
             if detection_result.get("success"):
                 self.detection_service.stop_detection()
-            
-            self.drone_repository.end_flight('failed')
+
+            # Flight failed - end with 0 pigeons
+            self.drone_repository.end_flight(0)
             return {
                 "success": False,
                 "flightId": str(flight_id),
@@ -118,8 +119,8 @@ class DroneService:
         result = {"success": True}
 
         if result.get("success"):
-            # End flight in database
-            self.drone_repository.end_flight('completed')
+            # End flight in database with pigeon count
+            self.drone_repository.end_flight(pigeon_count)
             return {
                 "success": True,
                 "pigeonsDetected": pigeon_count,
@@ -158,9 +159,9 @@ class DroneService:
         result = {"success": True}
 
         if result.get("success"):
-            # End flight in database as aborted
+            # End flight in database as aborted with pigeon count
             if flight_id is not None:
-                self.drone_repository.end_flight('aborted')
+                self.drone_repository.end_flight(pigeon_count)
             return {
                 "success": True,
                 "pigeonsDetected": pigeon_count,

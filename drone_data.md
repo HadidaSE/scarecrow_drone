@@ -179,7 +179,7 @@ killall python2
 # Stream via UDP using JPEG encoding (RTP/JPEG)
 gst-launch-1.0 -v \
   v4l2src device=/dev/video13 ! \
-  video/x-raw,width=640,height=480,framerate=30/1 ! \
+  video/x-raw,width=640,height=480,framerate=15/1 ! \
   videoconvert ! \
   jpegenc quality=85 ! \
   rtpjpegpay ! \

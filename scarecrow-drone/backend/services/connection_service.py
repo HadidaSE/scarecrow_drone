@@ -364,10 +364,11 @@ class ConnectionService:
         try:
             print(f"[INFO] Executing SSH command to start stream on drone...")
             print(f"[INFO] Drone IP: {self.DRONE_IP}")
-            print(f"[INFO] Stream script: ~/drone_scripts/start_stream98.sh")
+            print(f"[INFO] Stream script: ~/drone_scripts/start_streamb5.sh (30fps)")
 
             # Run the stream script in the background (using nohup)
             # This allows the SSH command to return while the stream continues
+            # Using start_streamb5.sh (30fps) instead of start_stream98.sh (15fps) due to negotiation issues
             ssh_command = [
                 "ssh",
                 "-o", "HostKeyAlgorithms=+ssh-rsa",
@@ -423,13 +424,14 @@ class ConnectionService:
         try:
             print(f"[INFO] Killing gst-launch-1.0 process on drone...")
             # Kill gst-launch-1.0 process running the stream
+            # Note: Yocto Linux does NOT have pkill, must use killall
             ssh_command = [
                 "ssh",
                 "-o", "HostKeyAlgorithms=+ssh-rsa",
                 "-o", "PubkeyAcceptedKeyTypes=+ssh-rsa",
                 "-o", "StrictHostKeyChecking=no",
                 f"{self.DRONE_SSH_USER}@{self.DRONE_IP}",
-                "pkill -f gst-launch-1.0"
+                "killall gst-launch-1.0"
             ]
 
             result = subprocess.run(
@@ -438,12 +440,14 @@ class ConnectionService:
                 text=True,
                 timeout=10
             )
-            
+
             print(f"[INFO] Kill command returned with code: {result.returncode}")
+            if result.stderr and result.returncode != 0:
+                print(f"[WARNING] stderr: {result.stderr}")
             print("[SUCCESS] Video stream stopped")
             print("=== VIDEO STREAM STOPPED ===")
 
-            # pkill returns 0 if process was found and killed
+            # killall returns 0 if process was found and killed
             return {"success": True, "output": "Video stream stopped"}
 
         except subprocess.TimeoutExpired:

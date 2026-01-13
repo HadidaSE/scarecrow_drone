@@ -104,4 +104,13 @@ export const droneApi = {
       throw new Error('Failed to get flight summary');
     return response.json();
   },
+
+  // Get detection images for a flight
+  getDetectionImages: async (flightId: string): Promise<string[]> => {
+    const response = await fetch(`${API_BASE_URL}/flights/${flightId}/images`);
+    if (!response.ok)
+      throw new Error('Failed to get detection images');
+    const data = await response.json();
+    return data.images || [];
+  },
 };

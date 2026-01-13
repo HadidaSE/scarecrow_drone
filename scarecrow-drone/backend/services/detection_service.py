@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 from typing import Optional
 import threading
+from database.drone_repository import DroneRepository
 
 
 class DetectionService:
@@ -28,6 +29,7 @@ class DetectionService:
         self._detection_process: Optional[subprocess.Popen] = None
         self._current_flight_id: Optional[int] = None
         self._detection_count = 0
+        self._drone_repository = DroneRepository()
         
         # Path to detection script
         self._project_root = Path(__file__).parent.parent.parent.parent
@@ -37,21 +39,30 @@ class DetectionService:
     def start_detection(self, flight_id: int, stream_source: str = "drone") -> dict:
         """
         Start pigeon detection from video stream
-        
+
         Args:
             flight_id: Database flight ID to associate detections with
             stream_source: "drone" for drone.sdp or "droneb5" for droneb5.sdp
-            
+
         Returns:
             dict with success status
         """
         print("\n=== STARTING DETECTION ===")
         print(f"Flight ID: {flight_id}")
         print(f"Stream Source: {stream_source}")
-        
+
+        # Check if process reference exists
         if self._detection_process is not None:
-            print("[ERROR] Detection already running!")
-            return {"success": False, "error": "Detection already running"}
+            # Check if process is actually still running
+            if self._detection_process.poll() is None:
+                print("[ERROR] Detection already running!")
+                return {"success": False, "error": "Detection already running"}
+            else:
+                # Process reference exists but process is dead - clean it up
+                print("[WARNING] Found dead detection process, cleaning up...")
+                self._detection_process = None
+                self._current_flight_id = None
+                self._detection_count = 0
         
         # Check if detection script exists
         if not self._detection_script.exists():
@@ -161,6 +172,22 @@ class DetectionService:
                 if stderr:
                     print(f"STDERR:\n{stderr}")
 
+                # Parse image paths and save to database
+                image_lines = [line for line in stdout.split('\n') if line.startswith('DETECTION_IMAGE:')]
+                if image_lines and self._current_flight_id:
+                    print(f"[INFO] Found {len(image_lines)} detection images to save to DB")
+                    for line in image_lines:
+                        image_path = line.replace('DETECTION_IMAGE:', '', 1).strip()
+                        if image_path:
+                            success = self._drone_repository.save_detection_image(
+                                self._current_flight_id, 
+                                image_path
+                            )
+                            if success:
+                                print(f"[INFO] Saved image to DB: {image_path}")
+                            else:
+                                print(f"[WARNING] Failed to save image to DB: {image_path}")
+
                 # Parse JSON result from detect.py (use LAST occurrence for most recent stats)
                 json_lines = [line for line in stdout.split('\n') if line.startswith('DETECTION_RESULT_JSON:')]
                 if json_lines:
@@ -240,6 +267,36 @@ class DetectionService:
             "flight_id": self._current_flight_id,
             "detection_count": self._detection_count
         }
+
+    def force_cleanup(self) -> dict:
+        """
+        Force cleanup of detection process state
+        Use this when detection is in bad state
+        """
+        print("\n=== FORCE CLEANUP DETECTION ===")
+
+        if self._detection_process is not None:
+            try:
+                # Try to terminate if still running
+                if self._detection_process.poll() is None:
+                    print(f"[INFO] Killing detection process (PID: {self._detection_process.pid})...")
+                    self._detection_process.kill()
+                    self._detection_process.wait(timeout=5)
+                    print("[INFO] Process killed")
+                else:
+                    print("[INFO] Process already dead")
+            except Exception as e:
+                print(f"[WARNING] Error during kill: {e}")
+
+        # Reset all state
+        self._detection_process = None
+        self._current_flight_id = None
+        self._detection_count = 0
+
+        print("[SUCCESS] Detection state reset")
+        print("=== CLEANUP COMPLETE ===")
+
+        return {"success": True, "message": "Detection state reset"}
     
     def start_drone_stream(self) -> dict:
         """

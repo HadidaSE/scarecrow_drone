@@ -76,7 +76,7 @@ class DetectionConfig:
     detections_dir: str = "pigeon_detections"
     save_detections: bool = True
     save_all_frames: bool = False
-    process_interval: float = 1.0  # Process 1 frame per second
+    process_interval: float = 0.1  # Process 10 frames per second (faster processing)
     frame_width: int = 640
     frame_height: int = 480
     ffmpeg_buffer_size: int = 10**8
@@ -134,17 +134,11 @@ class PigeonDetector:
         """Setup output directories for frames and detections."""
         # Setup frames directory
         self.frames_dir = Path(self.config.frames_dir)
-        if self.frames_dir.exists():
-            print(f"Clearing existing frames in {self.config.frames_dir}/...")
-            shutil.rmtree(self.frames_dir)
         self.frames_dir.mkdir(exist_ok=True)
         print(f"Frames directory ready: {self.config.frames_dir}/")
         
-        # Setup detections directory (always clear and create, regardless of save setting)
+        # Setup detections directory
         self.detections_dir = Path(self.config.detections_dir)
-        if self.detections_dir.exists():
-            print(f"Clearing existing detections in {self.config.detections_dir}/...")
-            shutil.rmtree(self.detections_dir)
         self.detections_dir.mkdir(exist_ok=True)
         print(f"Detections directory ready: {self.config.detections_dir}/")
     
@@ -312,6 +306,9 @@ class PigeonDetector:
             filename = self.detections_dir / f"pigeon_{timestamp_str}_frame{self.stats.frames_processed}.jpg"
             cv2.imwrite(str(filename), annotated)
             print(f"            Saved: {filename.name}")
+            
+            # Print image path for parent process to capture
+            print(f"DETECTION_IMAGE:{filename}")
         
         return num_pigeons
     
