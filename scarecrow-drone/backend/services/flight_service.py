@@ -36,6 +36,16 @@ class FlightService:
         images = self.drone_repository.get_detection_images(int(flight_id))
         return images
 
+    def get_flight_recording(self, flight_id: str) -> Optional[str]:
+        """
+        Get video recording path for a flight
+        Returns: Video path or None if no recording exists
+        """
+        flight = self.flight_repository.get_flight_by_id(flight_id)
+        if flight:
+            return flight.get("video_path")
+        return None
+
     def get_flight_summary(self, flight_id: str) -> Optional[dict]:
         """
         Get flight summary with stats calculated from telemetry

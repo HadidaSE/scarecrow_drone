@@ -113,4 +113,13 @@ export const droneApi = {
     const data = await response.json();
     return data.images || [];
   },
+
+  // Get recording video path for a flight
+  getFlightRecording: async (flightId: string): Promise<string | null> => {
+    const response = await fetch(`${API_BASE_URL}/flights/${flightId}/recording`);
+    if (!response.ok)
+      throw new Error('Failed to get flight recording');
+    const data = await response.json();
+    return data.recording || null;
+  },
 };

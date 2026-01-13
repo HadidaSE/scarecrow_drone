@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import DroneControl from '../components/DroneControl';
 import FlightHistory from '../components/FlightHistory';
+import DetectionImageGallery from '../components/DetectionImageGallery';
 import { Flight, DroneStatus, ConnectionStatus, FlightSummary } from '../types/flight';
 import { droneApi } from '../services/api';
 
@@ -19,6 +20,11 @@ const Dashboard: React.FC = () => {
   const [selectedFlight, setSelectedFlight] = useState<Flight | null>(null);
   const [flightSummary, setFlightSummary] = useState<FlightSummary | null>(null);
   const [loadingSummary, setLoadingSummary] = useState(false);
+  const [detectionImages, setDetectionImages] = useState<string[]>([]);
+  const [loadingImages, setLoadingImages] = useState(false);
+  const [recordingPath, setRecordingPath] = useState<string | null>(null);
+  const [loadingRecording, setLoadingRecording] = useState(false);
+  const [modalView, setModalView] = useState<'summary' | 'detections' | 'recording'>('summary');
   const [error, setError] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
   const [flightStartTime, setFlightStartTime] = useState<Date | null>(null);
@@ -140,12 +146,6 @@ const Dashboard: React.FC = () => {
       if (result.success) {
         setDroneStatus((prev) => ({ ...prev, isFlying: false }));
         setFlightStartTime(null);
-        // Show detection stats if available
-        if (result.pigeonsDetected !== undefined) {
-          setError(null);
-          const framesMsg = result.framesProcessed ? `\nFrames processed: ${result.framesProcessed}` : '';
-          alert(`Flight completed!\nPigeons detected: ${result.pigeonsDetected} frames${framesMsg}`);
-        }
       } else {
         setError('Failed to stop flight');
       }
@@ -160,12 +160,6 @@ const Dashboard: React.FC = () => {
       if (result.success) {
         setDroneStatus((prev) => ({ ...prev, isFlying: false }));
         setFlightStartTime(null);
-        // Show detection stats if available
-        if (result.pigeonsDetected !== undefined) {
-          setError(null);
-          const framesMsg = result.framesProcessed ? `\nFrames processed: ${result.framesProcessed}` : '';
-          alert(`Flight aborted!\nPigeons detected: ${result.pigeonsDetected} frames${framesMsg}`);
-        }
       } else {
         setError(result.error || 'Failed to abort mission');
       }
@@ -176,21 +170,39 @@ const Dashboard: React.FC = () => {
 
   const handleSelectFlight = async (flight: Flight) => {
     setSelectedFlight(flight);
+    setModalView('summary'); // Reset to summary view
     setLoadingSummary(true);
+    setLoadingImages(true);
+    setLoadingRecording(true);
     setFlightSummary(null);
+    setDetectionImages([]);
+    setRecordingPath(null);
+
     try {
-      const data = await droneApi.getFlightSummary(flight.id);
-      setFlightSummary(data);
+      // Load summary, images, and recording in parallel
+      const [summaryData, imagesData, recordingData] = await Promise.all([
+        droneApi.getFlightSummary(flight.id),
+        droneApi.getDetectionImages(flight.id),
+        droneApi.getFlightRecording(flight.id)
+      ]);
+      setFlightSummary(summaryData);
+      setDetectionImages(imagesData);
+      setRecordingPath(recordingData);
     } catch (err) {
-      console.error('Failed to load flight summary:', err);
+      console.error('Failed to load flight data:', err);
     } finally {
       setLoadingSummary(false);
+      setLoadingImages(false);
+      setLoadingRecording(false);
     }
   };
 
   const handleCloseModal = () => {
     setSelectedFlight(null);
     setFlightSummary(null);
+    setDetectionImages([]);
+    setRecordingPath(null);
+    setModalView('summary');
   };
 
   return (
@@ -241,40 +253,92 @@ const Dashboard: React.FC = () => {
       {selectedFlight && (
         <div className="modal-overlay" onClick={handleCloseModal}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h3>Flight Summary</h3>
-            {loadingSummary ? (
-              <p>Loading...</p>
-            ) : flightSummary ? (
-              <div className="flight-summary">
-                <div className="summary-row">
-                  <span className="label">Flight ID:</span>
-                  <span className="value">{flightSummary.flightId}</span>
-                </div>
-                <div className="summary-row">
-                  <span className="label">Drone ID:</span>
-                  <span className="value">{flightSummary.droneId}</span>
-                </div>
-                <div className="summary-row">
-                  <span className="label">Duration:</span>
-                  <span className="value">{Math.floor(flightSummary.duration / 60)}m {flightSummary.duration % 60}s</span>
-                </div>
-                <div className="summary-row">
-                  <span className="label">Avg Speed:</span>
-                  <span className="value">{flightSummary.avgSpeed} m/s</span>
-                </div>
-                <div className="summary-row">
-                  <span className="label">Avg Altitude:</span>
-                  <span className="value">{flightSummary.avgAltitude} m</span>
-                </div>
-                <div className="summary-row">
-                  <span className="label">Status:</span>
-                  <span className="value">{flightSummary.status}</span>
-                </div>
+            <div className="modal-header">
+              <h3>Flight Details</h3>
+              <div className="modal-tabs">
+                <button
+                  className={`modal-tab ${modalView === 'summary' ? 'active' : ''}`}
+                  onClick={() => setModalView('summary')}
+                >
+                  Summary
+                </button>
+                <button
+                  className={`modal-tab ${modalView === 'detections' ? 'active' : ''}`}
+                  onClick={() => setModalView('detections')}
+                >
+                  Detections ({detectionImages.length})
+                </button>
+                <button
+                  className={`modal-tab ${modalView === 'recording' ? 'active' : ''}`}
+                  onClick={() => setModalView('recording')}
+                >
+                  Recording
+                </button>
               </div>
-            ) : (
-              <p>No data available.</p>
-            )}
-            <button className="btn" onClick={handleCloseModal}>Close</button>
+            </div>
+
+            <div className="modal-content">
+              {modalView === 'summary' ? (
+                loadingSummary ? (
+                  <p>Loading...</p>
+                ) : flightSummary ? (
+                  <div className="flight-summary">
+                    <div className="summary-row">
+                      <span className="label">Flight ID:</span>
+                      <span className="value">{flightSummary.flightId}</span>
+                    </div>
+                    <div className="summary-row">
+                      <span className="label">Drone ID:</span>
+                      <span className="value">{flightSummary.droneId}</span>
+                    </div>
+                    <div className="summary-row">
+                      <span className="label">Duration:</span>
+                      <span className="value">{Math.floor(flightSummary.duration / 60)}m {flightSummary.duration % 60}s</span>
+                    </div>
+                    <div className="summary-row">
+                      <span className="label">Avg Speed:</span>
+                      <span className="value">{flightSummary.avgSpeed} m/s</span>
+                    </div>
+                    <div className="summary-row">
+                      <span className="label">Avg Altitude:</span>
+                      <span className="value">{flightSummary.avgAltitude} m</span>
+                    </div>
+                    <div className="summary-row">
+                      <span className="label">Status:</span>
+                      <span className="value">{flightSummary.status}</span>
+                    </div>
+                  </div>
+                ) : (
+                  <p>No data available.</p>
+                )
+              ) : modalView === 'detections' ? (
+                loadingImages ? (
+                  <p>Loading images...</p>
+                ) : (
+                  <div className="modal-images-container">
+                    <DetectionImageGallery images={detectionImages} />
+                  </div>
+                )
+              ) : (
+                loadingRecording ? (
+                  <p>Loading recording...</p>
+                ) : recordingPath ? (
+                  <div className="modal-video-container">
+                    <video
+                      className="flight-video-player"
+                      controls
+                      src={`http://localhost:5001/recordings/${recordingPath.split(/[/\\]/).pop()}`}
+                    >
+                      Your browser does not support the video tag.
+                    </video>
+                  </div>
+                ) : (
+                  <p>No recording available for this flight.</p>
+                )
+              )}
+            </div>
+
+            <button className="btn modal-close-btn" onClick={handleCloseModal}>Close</button>
           </div>
         </div>
       )}

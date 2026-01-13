@@ -12,7 +12,7 @@ class FlightRepository:
     def get_all_flights(self) -> List[dict]:
         """Get all flights from database ordered by start_time descending"""
         query = """
-            SELECT flight_id, start_time, end_time, piegeon_detected
+            SELECT flight_id, start_time, end_time, piegeon_detected, video_path
             FROM flights
             ORDER BY start_time DESC
         """
@@ -22,7 +22,7 @@ class FlightRepository:
     def get_flight_by_id(self, flight_id: str) -> Optional[dict]:
         """Get a single flight by ID"""
         query = """
-            SELECT flight_id, start_time, end_time, piegeon_detected
+            SELECT flight_id, start_time, end_time, piegeon_detected, video_path
             FROM flights
             WHERE flight_id = ?
         """
@@ -107,5 +107,6 @@ class FlightRepository:
             "pigeons_detected": row['piegeon_detected'] if row['piegeon_detected'] is not None else 0,
             "status": status,
             "start_time": start_time_only,
-            "end_time": end_time_only
+            "end_time": end_time_only,
+            "video_path": row['video_path'] if 'video_path' in row.keys() and row['video_path'] else None
         }
