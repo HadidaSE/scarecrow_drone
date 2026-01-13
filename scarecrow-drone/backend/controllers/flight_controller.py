@@ -35,3 +35,10 @@ def get_flight_images(flight_id: str):
     """GET /api/flights/:flightId/images - Get detection image paths for a flight"""
     images = flight_service.get_detection_images(flight_id)
     return {"images": images}
+
+
+@flight_router.get("/{flight_id}/videos")
+def get_flight_videos(flight_id: str):
+    """GET /api/flights/:flightId/videos - Get video recording paths for a flight"""
+    videos = flight_service.get_video_recordings(flight_id)
+    return {"videos": videos}

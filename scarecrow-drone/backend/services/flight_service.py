@@ -35,6 +35,14 @@ class FlightService:
         """
         images = self.drone_repository.get_detection_images(int(flight_id))
         return images
+    
+    def get_video_recordings(self, flight_id: str) -> List[str]:
+        """
+        Get all video recording paths for a flight
+        Returns: Array of video paths
+        """
+        videos = self.drone_repository.get_video_recordings(int(flight_id))
+        return videos
 
     def get_flight_summary(self, flight_id: str) -> Optional[dict]:
         """

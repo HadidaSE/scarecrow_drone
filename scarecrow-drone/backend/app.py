@@ -22,6 +22,13 @@ detection_images_path = Path(__file__).parent.parent.parent / "live_detection" /
 detection_images_path.mkdir(parents=True, exist_ok=True)
 app.mount("/detection_images", StaticFiles(directory=str(detection_images_path)), name="detection_images")
 
+# Mount video recordings directory as static files
+# This allows frontend to access videos at: http://localhost:5000/flight_videos/...
+# Path: backend/app.py -> scarecrow-drone/ -> final project/ -> live_detection/recordings
+video_recordings_path = Path(__file__).parent.parent.parent / "live_detection" / "recordings"
+video_recordings_path.mkdir(parents=True, exist_ok=True)
+app.mount("/flight_videos", StaticFiles(directory=str(video_recordings_path)), name="flight_videos")
+
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
