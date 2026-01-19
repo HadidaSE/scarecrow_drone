@@ -1,11 +1,59 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
 [project]
-name = "final-project"
+name = "scarecrow-drone"
 version = "0.1.0"
-description = "Add your description here"
+description = "Scarecrow Drone - Pigeon detection system with Intel Aero drone"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
     "numpy>=2.2.6",
     "opencv-python>=4.11.0.86",
     "ultralytics>=8.3.243",
+    "fastapi>=0.109.0",
+    "uvicorn>=0.27.0",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-cov>=4.1.0",
+    "httpx>=0.26.0",
+]
+
+[tool.setuptools]
+packages = []
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = [
+    "scarecrow-drone/backend",
+    "live_detection",
+]
+asyncio_mode = "auto"
+addopts = "-v --tb=short -ra"
+markers = [
+    "unit: Unit tests (fast, isolated)",
+    "integration: Integration tests (may require more setup)",
+    "slow: Slow running tests",
+]
+
+[tool.coverage.run]
+source = [
+    "scarecrow-drone/backend",
+    "live_detection",
+]
+omit = [
+    "*/tests/*",
+    "*/__pycache__/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.:",
+    "raise NotImplementedError",
 ]

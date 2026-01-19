@@ -37,3 +37,15 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Test coverage
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+.pytest_cache/
+.tox/
+
+# nul files (Windows artifact)
+nul
