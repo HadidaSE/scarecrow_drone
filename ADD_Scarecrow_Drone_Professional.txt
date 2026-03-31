@@ -1,0 +1,1198 @@
+                       Application Design Document (ADD)
+                    Scarecrow Drone - Bird Detection System
+                                 Version: 1.0
+                              Date: January 2026
+           Project: Scarecrow Drone - Secondary Alpha Implementation
+Table of Contents   1. Use Cases
+   2. System Architecture
+   3. Data Model
+   4. Behavioral Analysis
+   5. Object-Oriented Model
+   6. User Interface Draft
+   7. Testing
+Version: 1.0Date: January 2026Project: Scarecrow Drone - Secondary Alpha Implementation________________________________________________________________________________
+Table of Contents
+1. Use Cases2. System Architecture3. Data Model4. Behavioral Analysis5. Object-Oriented Model6. User Interface Draft7. Testing________________________________________________________________________________
+1. Use Cases
+1.1 Use Case Diagram
+┌──────────────────────────────────────────────────────────────────────────────────┐
+│                           Scarecrow Drone System                                  │
+│                                                                                   │
+│  ┌────────────────┐                                                              │
+│  │ UC1: Map Area  │─────────────┐                                                │
+│  │   Operation    │             │                                                │
+│  └────────────────┘             │                                                │
+│                                 ▼                                                │
+│  ┌────────────────┐    ┌──────────────────────────────┐                          │
+│  │                │    │                              │                          │
+│  │  UC2: Start    │───▶│  UC3: Record Flight Video    │                          │
+│  │ Detection      │    │                              │                          │
+│  │    Flight      │    └──────────────┬───────────────┘                          │
+│  │                │                   │                                          │
+│  └───────┬────────┘                   ▼                                          │
+│          │            ┌──────────────────────────────┐                           │
+│          │            │                              │                           │
+│          │            │  UC4: Detect Birds           │                           │
+│          │            │                              │                           │
+│          │            └──────────────┬───────────────┘                           │
+│          │                           │                                           │
+│          │                           ▼                                           │
+│          │            ┌──────────────────────────────┐                           │
+│          │            │                              │                           │
+│          │            │  UC5: Chase Birds &          │                           │
+│          │            │  Apply Counter Measures      │                           │
+│          │            │                              │                           │
+│          │            └──────────────┬───────────────┘                           │
+│          │                           │                                           │
+│          │                           ▼                                           │
+│          │            ┌──────────────────────────────┐                           │
+│          └───────────▶│                              │                           │
+│                       │  UC6: Store Flight Data      │                           │
+│                       │                              │                           │
+│                       └──────────────┬───────────────┘                           │
+│                                      │                                           │
+│  ┌────────────────┐                  ▼                                           │
+│  │                │    ┌──────────────────────────────┐                          │
+│  │  UC7: Abort    │    │                              │                          │
+│  │    Mission     │───▶│  UC8: View Flight Results    │                          │
+│  │                │    │                              │                          │
+│  └────────────────┘    └──────────────────────────────┘                          │
+│                                                                                   │
+└──────────────────────────────────────────────────────────────────────────────────┘
+                    ▲                                    ▲
+                    │                                    │
+                    │                                    │
+              ┌─────┴─────┐                        ┌─────┴─────┐
+              │           │                        │           │
+              │  Operator │                        │  System   │
+              │           │                        │           │
+              └───────────┘                        └───────────┘
+________________________________________________________________________________
+1.2 Actors
+ActorDescriptionOperatorA human user who interacts with the Scarecrow Drone system through the web-based dashboard. The operator can initiate flights, monitor drone status, view flight history, and review bird detection results.SystemThe automated system components that perform actions without direct user intervention, including the bird detection model, video recording service, and data storage mechanisms.1.3 Use Cases Summary
+UCNameDescriptionActorUsing UCUC1Map Area OperationPerforms initial mapping of the target area to define flight boundaries and identify key zones for pigeon detectionOperatorUC6UC2Start Detection FlightInitiates a drone flight session for active pigeon detection and deterrence operationsOperatorUC3, UC6UC3Record Flight VideoCaptures video feed from the drone's camera during flight for bird detection analysisSystemUC4UC4Detect BirdsAnalyzes video frames using YOLO model to identify and mark bird (pigeon) locationsSystemUC5UC5Chase Birds & Apply Counter MeasuresPursues detected birds and activates deterrent measures (sound, movement patterns) to scare them awaySystemUC6UC6Store Flight DataPersists flight information, telemetry data, detection images, and video recordings to the databaseSystem-UC7Abort MissionImmediately terminates the current flight mission and initiates safe return/landing proceduresOperatorUC6UC8View Flight ResultsDisplays historical flight records with detection images, statistics, and video recordingsOperator-1.4 Detailed Use Case Specifications
+1.4.1 UC1: Map Area Operation
+FieldDescription**Name**Map Area Operation**Identifier**UC1**Actor**Operator**Precondition**1. The system is running and accessible via web dashboard<br>2. The drone is powered on and within communication range<br>3. No other flight is currently in progress<br>4. Camera feed is available**Postconditions**1. Area boundaries are defined and stored<br>2. Flight zones are mapped for patrol routes<br>3. Mapping data is saved for future detection flights**Basic Course**1. Operator navigates to the Area Mapping page<br>2. Operator initiates mapping flight<br>3. Drone performs systematic area scan<br>4. System captures and processes terrain data<br>5. Operator reviews and confirms mapped boundaries<br>6. System stores mapping data (UC6)**Alternate Courses**A1. Communication Lost:<br>&nbsp;&nbsp;A1.1. System alerts operator<br>&nbsp;&nbsp;A1.2. Drone holds position or returns home<br>&nbsp;&nbsp;A1.3. Partial mapping data is saved**Extensions**E1. Operator can manually adjust boundaries after mapping1.4.2 UC2: Start Detection Flight
+FieldDescription**Name**Start Detection Flight**Identifier**UC2**Actor**Operator**Precondition**1. The system is running and accessible via web dashboard<br>2. The drone is powered on and within communication range<br>3. No other flight is currently in progress<br>4. Area mapping has been completed (UC1)**Postconditions**1. A new flight record is created in the database<br>2. Video recording has started<br>3. Bird detection processing is active<br>4. Flight status is set to "in_progress"**Basic Course**1. Operator navigates to the Dashboard page<br>2. Operator clicks "Start Detection Flight" button<br>3. System creates a new flight record with current timestamp<br>4. Drone begins patrolling mapped area<br>5. System initiates video recording (UC3)<br>6. System begins bird detection processing (UC4)<br>7. Dashboard displays real-time flight status**Alternate Courses**A1. Connection Failure:<br>&nbsp;&nbsp;A1.1. System fails to establish connection<br>&nbsp;&nbsp;A1.2. System displays error message<br>&nbsp;&nbsp;A1.3. Flight record is not created**Extensions**E1. Operator can view live detection feed during flight1.4.3 UC3: Record Flight Video
+FieldDescription**Name**Record Flight Video**Identifier**UC3**Actor**System**Precondition**1. Detection flight has been initiated (UC2 completed)<br>2. Camera feed is available<br>3. Storage space is available for video files**Postconditions**1. Video file is saved to recordings directory<br>2. Video path is associated with flight record<br>3. Video frames are available for detection processing**Basic Course**1. System receives flight start signal<br>2. System initializes FFmpeg video capture<br>3. System begins capturing frames from camera stream<br>4. Frames are passed to detection service (UC4)<br>5. Video is encoded and saved to disk<br>6. Recording continues until flight ends**Alternate Courses**A1. Camera Unavailable:<br>&nbsp;&nbsp;A1.1. System logs error<br>&nbsp;&nbsp;A1.2. Flight continues without video<br>&nbsp;&nbsp;A1.3. Detection operates on available frames**Extensions**-1.4.4 UC4: Detect Birds
+FieldDescription**Name**Detect Birds**Identifier**UC4**Actor**System**Precondition**1. Video frames are being captured (UC3 active)<br>2. YOLO detection model is loaded<br>3. Detection service is initialized**Postconditions**1. Bird detections are identified with bounding boxes<br>2. Detection images are saved with annotations<br>3. Detection records are stored in database<br>4. Chase sequence is triggered if birds detected**Basic Course**1. System receives video frame from recording service<br>2. Frame is preprocessed for YOLO model<br>3. YOLO model analyzes frame for bird presence<br>4. For each detection above confidence threshold:<br>&nbsp;&nbsp;4.1. Bounding box coordinates are extracted<br>&nbsp;&nbsp;4.2. Detection is drawn on frame<br>&nbsp;&nbsp;4.3. Annotated image is saved<br>5. Detection data is sent to storage service (UC6)<br>6. If birds detected, trigger chase sequence (UC5)**Alternate Courses**A1. No Birds Detected:<br>&nbsp;&nbsp;A1.1. Frame is processed but no detections recorded<br>&nbsp;&nbsp;A1.2. System continues to next frame**Extensions**E1. Multiple birds can be detected in single frame1.4.5 UC5: Chase Birds & Apply Counter Measures
+FieldDescription**Name**Chase Birds & Apply Counter Measures**Identifier**UC5**Actor**System**Precondition**1. Birds have been detected (UC4)<br>2. Drone is in active flight mode<br>3. Counter measure systems are operational**Postconditions**1. Drone has pursued detected birds<br>2. Counter measures have been activated<br>3. Chase event is logged**Basic Course**1. System receives bird detection coordinates<br>2. Drone calculates pursuit trajectory<br>3. Drone moves toward bird location<br>4. System activates deterrent measures (sound/movement)<br>5. System monitors bird response<br>6. Drone returns to patrol route when birds dispersed<br>7. Chase data is stored (UC6)**Alternate Courses**A1. Birds Out of Range:<br>&nbsp;&nbsp;A1.1. System logs detection but does not pursue<br>&nbsp;&nbsp;A1.2. Drone continues patrol route<br>A2. Battery Low During Chase:<br>&nbsp;&nbsp;A2.1. System aborts chase<br>&nbsp;&nbsp;A2.2. Drone initiates return home**Extensions**E1. Multiple chase sequences can occur during single flight1.4.6 UC6: Store Flight Data
+FieldDescription**Name**Store Flight Data**Identifier**UC6**Actor**System**Precondition**1. Database connection is established<br>2. Flight data is available for storage**Postconditions**1. Flight record is persisted in flights table<br>2. Detection images are stored in ditection_images table<br>3. Video file path is recorded<br>4. Chase events are logged**Basic Course**1. System receives flight data to store<br>2. Flight record is inserted/updated in flights table<br>3. For each detection image:<br>&nbsp;&nbsp;3.1. Image path is recorded<br>&nbsp;&nbsp;3.2. Detection metadata is stored<br>4. For each chase event:<br>&nbsp;&nbsp;4.1. Chase coordinates and duration recorded<br>&nbsp;&nbsp;4.2. Counter measure type logged<br>5. Video recording path is associated with flight<br>6. Flight end time and status are updated on completion**Alternate Courses**A1. Database Error:<br>&nbsp;&nbsp;A1.1. System logs error<br>&nbsp;&nbsp;A1.2. Data is queued for retry<br>&nbsp;&nbsp;A1.3. User is notified of storage issue**Extensions**-1.4.7 UC7: Abort Mission
+FieldDescription**Name**Abort Mission**Identifier**UC7**Actor**Operator**Precondition**1. A flight is currently in progress<br>2. System is responsive to commands**Postconditions**1. Current flight operations are terminated<br>2. Drone initiates safe landing or return home<br>3. Flight record is updated with aborted status<br>4. Partial data is preserved**Basic Course**1. Operator clicks "Abort Mission" button<br>2. System immediately stops all active operations<br>3. Drone stops current movement/chase<br>4. Drone initiates return-to-home sequence<br>5. Video recording is stopped and saved<br>6. Flight status is updated to "aborted" (UC6)<br>7. Dashboard displays abort confirmation**Alternate Courses**A1. Communication Lost:<br>&nbsp;&nbsp;A1.1. Drone activates failsafe mode<br>&nbsp;&nbsp;A1.2. Drone auto-lands or returns home<br>&nbsp;&nbsp;A1.3. System retries connection<br>A2. Low Battery During Abort:<br>&nbsp;&nbsp;A2.1. Drone prioritizes immediate landing<br>&nbsp;&nbsp;A2.2. System logs emergency landing event**Extensions**E1. Operator can specify landing location if within range1.4.8 UC8: View Flight Results
+FieldDescription**Name**View Flight Results**Identifier**UC8**Actor**Operator**Precondition**1. System is running and accessible<br>2. At least one flight record exists**Postconditions**1. Flight history and results are displayed to operator**Basic Course**1. Operator navigates to Flight History page<br>2. System retrieves all flight records from database<br>3. Flights are displayed in chronological order<br>4. Each flight shows: ID, start time, end time, status, detection count, chase count<br>5. Operator selects a flight to view details<br>6. System displays detection images in gallery format<br>7. Each image shows annotated bird locations<br>8. Chase events are displayed with timestamps and outcomes**Alternate Courses**A1. No Flights Available:<br>&nbsp;&nbsp;A1.1. System displays "No flights recorded" message<br>A2. No Detections for Flight:<br>&nbsp;&nbsp;A2.1. System displays "No detections for this flight"**Extensions**E1. Operator can filter flights by date range<br>E2. Operator can view flight video recording<br>E3. Operator can download detection images<br>E4. Operator can export flight statistics________________________________________________________________________________
+2. System Architecture
+2.1 Deployment Diagram
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              Client Machine                                  │
+│  ┌───────────────────────────────────────────────────────────────────────┐  │
+│  │                        Web Browser                                     │  │
+│  │  ┌─────────────────────────────────────────────────────────────────┐  │  │
+│  │  │              React Frontend (Port 5173)                          │  │  │
+│  │  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐  │  │  │
+│  │  │  │  Dashboard  │  │   Flight    │  │    Detection Gallery    │  │  │  │
+│  │  │  │    Page     │  │   History   │  │                         │  │  │  │
+│  │  │  └─────────────┘  └─────────────┘  └─────────────────────────┘  │  │  │
+│  │  └─────────────────────────────────────────────────────────────────┘  │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                    │
+                                    │ HTTP/REST
+                                    ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         Ground Station (Server Machine)                      │
+│  ┌───────────────────────────────────────────────────────────────────────┐  │
+│  │                    FastAPI Backend (Port 5000)                         │  │
+│  │  ┌──────────────────────────────────────────────────────────────────┐ │  │
+│  │  │                         Controllers                               │ │  │
+│  │  │  ┌───────────────┐  ┌────────────────┐  ┌─────────────────────┐  │ │  │
+│  │  │  │    Drone      │  │     Flight     │  │     Connection      │  │ │  │
+│  │  │  │  Controller   │  │   Controller   │  │     Controller      │  │ │  │
+│  │  │  └───────────────┘  └────────────────┘  └─────────────────────┘  │ │  │
+│  │  └──────────────────────────────────────────────────────────────────┘ │  │
+│  │  ┌──────────────────────────────────────────────────────────────────┐ │  │
+│  │  │                          Services                                 │ │  │
+│  │  │  ┌───────────────┐  ┌────────────────┐  ┌─────────────────────┐  │ │  │
+│  │  │  │    Drone      │  │     Flight     │  │     Detection       │  │ │  │
+│  │  │  │   Service     │  │    Service     │  │      Service        │  │ │  │
+│  │  │  └───────────────┘  └────────────────┘  └─────────────────────┘  │ │  │
+│  │  └──────────────────────────────────────────────────────────────────┘ │  │
+│  │  ┌──────────────────────────────────────────────────────────────────┐ │  │
+│  │  │                        Repositories                               │ │  │
+│  │  │  ┌───────────────┐  ┌────────────────┐                           │ │  │
+│  │  │  │    Drone      │  │     Flight     │                           │ │  │
+│  │  │  │  Repository   │  │   Repository   │                           │ │  │
+│  │  │  └───────────────┘  └────────────────┘                           │ │  │
+│  │  └──────────────────────────────────────────────────────────────────┘ │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
+│                                    │                                         │
+│                                    ▼                                         │
+│  ┌───────────────────────────────────────────────────────────────────────┐  │
+│  │                      SQLite Database                                   │  │
+│  │              (scarecrow-drone/backend/database.db)                     │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
+│                                                                              │
+│  ┌───────────────────────────────────────────────────────────────────────┐  │
+│  │                    Detection Module                                    │  │
+│  │  ┌─────────────────────────────────────────────────────────────────┐  │  │
+│  │  │                    detect.py                                     │  │  │
+│  │  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐  │  │  │
+│  │  │  │   FFmpeg    │  │    YOLO     │  │      OpenCV             │  │  │  │
+│  │  │  │  Decoder    │  │   Model     │  │   Processing            │  │  │  │
+│  │  │  └─────────────┘  └─────────────┘  └─────────────────────────┘  │  │  │
+│  │  └─────────────────────────────────────────────────────────────────┘  │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
+│                                                                              │
+│  ┌───────────────────────────────────────────────────────────────────────┐  │
+│  │                      File Storage                                      │  │
+│  │  ┌─────────────────┐  ┌─────────────────────────────────────────────┐ │  │
+│  │  │   recordings/   │  │              detection_images/              │ │  │
+│  │  │  (Video files)  │  │          (Annotated detection frames)       │ │  │
+│  │  └─────────────────┘  └─────────────────────────────────────────────┘ │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────────────┘
+              │                                           ▲
+              │ MAVLink Commands                          │ RTP/UDP Video Stream
+              │ (Flight control, waypoints,               │ (GStreamer JPEG @ 5000)
+              │  arm/disarm, mode changes)                │
+              ▼                                           │
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           Drone (Airborne Unit)                              │
+│                                                                              │
+│  ┌───────────────────────────────────────────────────────────────────────┐  │
+│  │                     Flight Controller (Pixhawk)                        │  │
+│  │  ┌─────────────────────────────────────────────────────────────────┐  │  │
+│  │  │  ArduPilot Firmware                                              │  │  │
+│  │  │  ┌─────────────────────────────┐  ┌─────────────────────────┐  │  │  │
+│  │  │  │        MAVLink              │  │    IMU / Sensors        │  │  │  │
+│  │  │  │        Protocol             │  │   (Altitude, Attitude)  │  │  │  │
+│  │  │  └─────────────────────────────┘  └─────────────────────────┘  │  │  │
+│  │  └─────────────────────────────────────────────────────────────────┘  │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
+│                                                                              │
+│  ┌───────────────────────────────────────────────────────────────────────┐  │
+│  │                     Companion Computer                                │  │
+│  │  ┌─────────────────────────────────────────────────────────────────┐  │  │
+│  │  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐  │  │  │
+│  │  │  │  GStreamer  │  │   Camera    │  │    WiFi / Telemetry     │  │  │  │
+│  │  │  │  Encoder    │  │  Interface  │  │     Radio Link          │  │  │  │
+│  │  │  └─────────────┘  └─────────────┘  └─────────────────────────┘  │  │  │
+│  │  └─────────────────────────────────────────────────────────────────┘  │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
+│                                                                              │
+│  ┌───────────────────────────────────────────────────────────────────────┐  │
+│  │                         Hardware Components                            │  │
+│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  │  │
+│  │  │   Camera    │  │   Motors    │  │   Battery   │  │   Speaker   │  │  │
+│  │  │ (640x480)   │  │   (x4/x6)   │  │  (LiPo 4S)  │  │ (Deterrent) │  │  │
+│  │  └─────────────┘  └─────────────┘  └─────────────┘  └─────────────┘  │  │
+│  └───────────────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────────────┘
+________________________________________________________________________________
+2.2 Communication Protocols
+ProtocolDirectionPortDescriptionRTP/UDP (JPEG)Drone --> Ground Station5000Live video stream from drone camera via GStreamerMAVLinkGround Station --> DroneSerial/WiFiFlight commands, waypoints, arm/disarm, mode changesMAVLinkDrone --> Ground StationSerial/WiFiTelemetry data (altitude, battery, attitude)HTTP/RESTFrontend --> Backend5000Web API for flight control and data retrieval2.3 System Components
+2.3.1 Frontend Layer
+ComponentTechnologyDescriptionReact ApplicationReact 19, TypeScriptSingle-page application providing the user interfaceDashboard PageReact ComponentMain control interface for starting/stopping flights and viewing statusFlight History PageReact ComponentDisplays historical flight records and statisticsDetection GalleryReact ComponentShows detection images with bird annotationsAPI ServiceTypeScript ModuleHandles HTTP communication with backend2.3.2 Backend Layer
+ComponentTechnologyDescriptionFastAPI ApplicationPython 3.9, FastAPIRESTful API server handling all client requestsDroneControllerPython ClassHandles drone-related API endpointsFlightControllerPython ClassManages flight CRUD operationsConnectionControllerPython ClassHandles connection status endpointsDroneServicePython ClassBusiness logic for drone operationsFlightServicePython ClassBusiness logic for flight managementDetectionServicePython ClassManages bird detection processingFlightRepositoryPython ClassData access layer for flight recordsDroneRepositoryPython ClassData access layer for drone data2.3.3 Detection Module
+ComponentTechnologyDescriptiondetect.pyPython ScriptMain detection processing scriptYOLO ModelYOLOv8 (best_v4.pt)Pre-trained model for pigeon detectionFFmpeg StreamFFmpegVideo capture and encodingOpenCV ProcessingOpenCVFrame manipulation and annotation2.3.4 Data Storage
+ComponentTechnologyDescriptionSQLite DatabaseSQLite 3Persistent storage for flight and detection dataVideo StorageFile SystemStorage for recorded flight videosImage StorageFile SystemStorage for detection images2.3.5 Drone (Airborne Unit)
+ComponentTechnologyDescriptionFlight ControllerPixhawk (ArduPilot)Autopilot system managing flight stabilization, navigation, and sensor fusionCompanion ComputerRaspberry Pi / Intel NUCHandles video streaming, camera interface, and WiFi communicationCameraUSB/CSI Camera (640x480)Captures video for streaming to ground stationGStreamer EncoderGStreamer 1.0Encodes and streams video via RTP/UDP to ground stationIMU SensorsAccelerometer, Gyroscope, BarometerProvides attitude, altitude, and motion dataTelemetry RadioWiFi / SiK RadioBidirectional MAVLink communication with ground stationSpeaker/BuzzerAudio Output DeviceDeterrent counter-measure for scaring birds________________________________________________________________________________
+3. Data Model
+3.1 Class Diagram
+                    ┌─────────────────────────────────────────┐
+                    │               AreaMap                    │
+                    ├─────────────────────────────────────────┤
+                    │ - id: int                               │
+                    │ - name: string                          │
+                    │ - created_at: datetime                  │
+                    │ - updated_at: datetime                  │
+                    │ - boundaries: JSON/string               │
+                    │ - area_size: float (sq meters)          │
+                    │ - status: string (active/draft)         │
+                    ├─────────────────────────────────────────┤
+                    │ + create_map(): void                    │
+                    │ + update_boundaries(boundaries): void   │
+                    │ + validate_boundaries(): bool           │
+                    │ + get_boundaries(): JSON                │
+                    │ + set_status(status): void              │
+                    │ + get_area_size(): float                │
+                    └─────────────────────────────────────────┘
+                                      │
+                                      │ 1
+                                      │
+                                      │ *
+                                      ▼
+┌─────────────────────────────────────────┐
+│                 Flight                   │
+├─────────────────────────────────────────┤
+│ - id: int                               │
+│ - area_map_id: int (FK)                 │
+│ - start_time: datetime                  │
+│ - end_time: datetime (nullable)         │
+│ - status: string                        │
+│ - video_path: string (nullable)         │
+├─────────────────────────────────────────┤
+│ + start(): void                         │
+│ + stop(): void                          │
+│ + abort(): void                         │
+│ + get_duration(): timedelta             │
+│ + get_detection_count(): int            │
+│ + get_detections(): List[DetectionImage]│
+│ + add_detection(detection): void        │
+│ + get_video_path(): string              │
+│ + set_video_path(path): void            │
+│ + get_telemetry(): Telemetry            │
+│ + set_telemetry(telemetry): void        │
+│ + get_area_map(): AreaMap               │
+│ + set_area_map(area_map): void          │
+└─────────────────────────────────────────┘
+          │                     │                      │
+        1 │                   1 │                    1 │
+          │                     │                      │
+          │ *                   │ 1                    │ *
+          ▼                     ▼                      ▼
+┌─────────────────────────────┐  ┌─────────────────────────────────────────┐  ┌─────────────────────────────────────────┐
+│      DetectionImage         │  │               Telemetry                  │  │              ChaseEvent                  │
+├─────────────────────────────┤  ├─────────────────────────────────────────┤  ├─────────────────────────────────────────┤
+│ - id: int                   │  │ - flight_id: int (PK)                   │  │ - id: int                               │
+│ - flight_id: int (FK)       │  │ - battery_level: float (nullable)       │  │ - flight_id: int (FK)                   │
+│ - image_path: string        │  │ - distance: float                       │  │ - detection_image_id: int (FK)          │
+│ - timestamp: datetime       │  │ - detections: int                       │  │ - start_time: datetime                  │
+├─────────────────────────────┤  ├─────────────────────────────────────────┤  │ - end_time: datetime                    │
+│ + save(): void              │  │ + get_flight(): Flight                  │  │ - counter_measure_type: string          │
+│ + get_flight(): Flight      │  │ + update_battery(level): void           │  │ - outcome: string                       │
+│ + get_timestamp(): datetime │  │ + add_distance(dist): void              │  ├─────────────────────────────────────────┤
+│ + get_image_path(): string  │  │ + increment_detections(): void          │  │ + log_chase(): void                     │
+│ + set_image_path(path): void│  └─────────────────────────────────────────┘  │ + get_duration(): timedelta             │
+└─────────────────────────────┘                                                │ + get_outcome(): string                 │
+          │                                                                    │ + set_outcome(outcome): void            │
+        1 │                                                                    └─────────────────────────────────────────┘
+          │                                                                                       ▲
+          │ 0..1                                                                                  │
+          └───────────────────────────────────────────────────────────────────────────────────────┘
+________________________________________________________________________________
+3.2 Data Objects Relationships
+The relationships between data objects are shown below:┌─────────────┐
+│   AreaMap   │
+└─────────────┘
+       │
+       │ 1
+       │
+       │ *
+       ▼
+┌─────────────┐
+│   Flight    │
+└─────────────┘
+       │
+       ├────────────────┬────────────────┐
+       │                │                │
+     1 │              1 │              1 │
+       │                │                │
+     * │              1 │              * │
+       ▼                ▼                ▼
+┌──────────────┐  ┌───────────┐  ┌─────────────┐
+│DetectionImage│  │ Telemetry │  │ ChaseEvent  │
+└──────────────┘  └───────────┘  └─────────────┘
+       │                                 ▲
+       │ 1                               │
+       │                                 │
+       │ 0..1                            │
+       └─────────────────────────────────┘
+________________________________________________________________________________
+3.3 Databases
+3.3.1 Entity Relationship Diagram (ERD)
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                                                                              │
+│    ┌────────────────────────────┐                                           │
+│    │        area_maps           │                                           │
+│    ├────────────────────────────┤                                           │
+│    │ PK  id          INTEGER    │                                           │
+│    │     name        TEXT       │                                           │
+│    │     created_at  DATETIME   │                                           │
+│    │     updated_at  DATETIME   │                                           │
+│    │     boundaries  TEXT       │                                           │
+│    │     area_size   REAL       │                                           │
+│    │     status      TEXT       │                                           │
+│    └────────────────────────────┘                                           │
+│                │                                                             │
+│                │ 1                                                           │
+│                │                                                             │
+│                │ *                                                           │
+│                ▼                                                             │
+│    ┌────────────────────────────┐         ┌────────────────────────────┐    │
+│    │          flights           │         │     detection_images       │    │
+│    ├────────────────────────────┤         ├────────────────────────────┤    │
+│    │ PK  id          INTEGER    │────┐    │ PK  id          INTEGER    │    │
+│    │ FK  area_map_id INTEGER    │    │    │ FK  flight_id   INTEGER    │◀───┤
+│    │     start_time  DATETIME   │    │    │     image_path  TEXT       │    │
+│    │     end_time    DATETIME   │    └───▶│     timestamp   DATETIME   │    │
+│    │     status      TEXT       │    1  * └────────────────────────────┘    │
+│    │     video_path  TEXT       │                         │                 │
+│    └────────────────────────────┘                         │ 1               │
+│                │                │                          │                 │
+│                │ 1              │ 1                        │ 1               │
+│                │                │                          │                 │
+│                │ 1              │ *                        │ *               │
+│                ▼                ▼                          ▼                 │
+│    ┌────────────────────────────┐      ┌────────────────────────────────┐   │
+│    │         telemetry          │      │         chase_events           │   │
+│    ├────────────────────────────┤      ├────────────────────────────────┤   │
+│    │ PK/FK flight_id  INTEGER   │      │ PK  id                 INTEGER │   │
+│    │     battery_level REAL     │      │ FK  flight_id          INTEGER │   │
+│    │     distance     REAL      │      │ FK  detection_image_id INTEGER │   │
+│    │     detections   INTEGER   │      │     start_time         DATETIME│   │
+│    └────────────────────────────┘      │     end_time           DATETIME│   │
+│                                         │     counter_measure_type TEXT  │   │
+│                                         │     outcome            TEXT    │   │
+│                                         └────────────────────────────────┘   │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+________________________________________________________________________________
+3.3.2 Database Tables
+##### area_maps TableColumnTypeNullableDescriptionidINTEGERNoPrimary key, auto-incrementnameTEXTNoName/identifier for the mapped areacreated_atDATETIMENoTimestamp when area map was createdupdated_atDATETIMENoTimestamp when area map was last updatedboundariesTEXTNoJSON string containing boundary coordinates from LIDAR/image dataarea_sizeREALNoCalculated area size in square metersstatusTEXTNoMap status: "active", "draft"##### flights Table
+ColumnTypeNullableDescriptionidINTEGERNoPrimary key, auto-incrementarea_map_idINTEGERYesForeign key to area_maps tablestart_timeDATETIMENoTimestamp when flight startedend_timeDATETIMEYesTimestamp when flight ended (null if in progress)statusTEXTNoFlight status: "in_progress", "completed", "failed", "aborted"video_pathTEXTYesPath to recorded video file##### detection_images Table
+ColumnTypeNullableDescriptionidINTEGERNoPrimary key, auto-incrementflight_idINTEGERNoForeign key to flights tableimage_pathTEXTNoPath to detection image filetimestampDATETIMENoTimestamp when detection occurred##### telemetry Table
+ColumnTypeNullableDescriptionflight_idINTEGERNoPrimary key and foreign key to flights table (1:1 relationship)battery_levelREALYesBattery percentage (0-100)distanceREALNoTotal distance traveled by drone in metersdetectionsINTEGERNoTotal number of bird detections during flight##### chase_events Table
+ColumnTypeNullableDescriptionidINTEGERNoPrimary key, auto-incrementflight_idINTEGERNoForeign key to flights tabledetection_image_idINTEGERYesForeign key to detection_images table (optional reference to triggering detection)start_timeDATETIMENoTimestamp when chase sequence startedend_timeDATETIMEYesTimestamp when chase sequence ended (null if in progress)counter_measure_typeTEXTNoType of counter-measure applied: "sound", "movement", "combined"outcomeTEXTYesChase outcome: "dispersed", "lost", "aborted"3.3.3 Main Database Transactions
+This section describes the key database transactions, which entities they modify, and how they interact with the database.##### Transaction 1: Create FlightModified Entities: flights, telemetryProcess:1. INSERT new record into flights table with start_time, status="in_progress", and optional area_map_id2. INSERT new record into telemetry table with flight_id, initializing battery_level, distance=0, detections=0##### Transaction 2: Record DetectionModified Entities: detection_images, telemetryProcess:1. INSERT new record into detection_images table with flight_id, image_path, and timestamp2. UPDATE telemetry table, incrementing detections count for the associated flight##### Transaction 3: Log Chase EventModified Entities: chase_eventsProcess:1. INSERT new record into chase_events table with flight_id, optional detection_image_id, start_time, and counter_measure_type2. When chase ends: UPDATE the same record, setting end_time and outcome##### Transaction 4: End FlightModified Entities: flights, telemetryProcess:1. UPDATE flights table, setting end_time, status (completed/failed/aborted), and video_path2. UPDATE telemetry table with final battery_level and distance values##### Transaction 5: Create Area MapModified Entities: area_mapsProcess:1. INSERT new record into area_maps table with name, boundaries, area_size, status, created_at, and updated_at##### Transaction 6: Update Area MapModified Entities: area_mapsProcess:1. UPDATE area_maps table, modifying boundaries, area_size, status, and updated_at timestamp________________________________________________________________________________
+3.4 Database Entity Mapping
+All classes in the Class Diagram (Section 3.1) map directly to database entities (tables) in the SQLite database:- AreaMap class --> area_maps table- Flight class --> flights table- DetectionImage class --> detection_images table- Telemetry class --> telemetry table- ChaseEvent class --> chase_events tableEach class attribute corresponds to a table column, and the methods in each class provide the business logic for interacting with the database records through the repository pattern.________________________________________________________________________________
+4. Behavioral Analysis
+This section describes the control flow and behavioral patterns of the Scarecrow Drone system through sequence diagrams, event definitions, and state machine diagrams.4.1 Sequence Diagrams
+Sequence diagrams illustrate the interaction between objects and the methods called to accomplish each use case.4.1.1 UC1: Map Area Operation
+┌─────────┐      ┌──────────┐      ┌──────────┐      ┌──────────┐      ┌─────────┐      ┌──────────┐
+│Operator │      │Dashboard │      │  Drone   │      │  Drone   │      │ AreaMap │      │ Database │
+│         │      │   Page   │      │Controller│      │ Service  │      │         │      │          │
+└────┬────┘      └────┬─────┘      └────┬─────┘      └────┬─────┘      └────┬────┘      └────┬─────┘
+     │                │                 │                 │                 │                │
+     │ Navigate to    │                 │                 │                 │                │
+     │ Area Mapping   │                 │                 │                 │                │
+     │───────────────>│                 │                 │                 │                │
+     │                │                 │                 │                 │                │
+     │ Click "Start   │                 │                 │                 │                │
+     │ Mapping"       │                 │                 │                 │                │
+     │───────────────>│                 │                 │                 │                │
+     │                │                 │                 │                 │                │
+     │                │ POST /api/drone/│                 │                 │                │
+     │                │   start_mapping │                 │                 │                │
+     │                │────────────────>│                 │                 │                │
+     │                │                 │                 │                 │                │
+     │                │                 │ start_mapping() │                 │                │
+     │                │                 │────────────────>│                 │                │
+     │                │                 │                 │                 │                │
+     │                │                 │                 │ create_map()    │                │
+     │                │                 │                 │────────────────>│                │
+     │                │                 │                 │                 │                │
+     │                │                 │                 │                 │ INSERT area_map│
+     │                │                 │                 │                 │───────────────>│
+     │                │                 │                 │                 │                │
+     │                │                 │                 │                 │ area_map_id    │
+     │                │                 │                 │                 │<───────────────│
+     │                │                 │                 │                 │                │
+     │                │                 │                 │    AreaMap      │                │
+     │                │                 │                 │<────────────────│                │
+     │                │                 │                 │                 │                │
+     │                │                 │   AreaMap       │                 │                │
+     │                │                 │<────────────────│                 │                │
+     │                │                 │                 │                 │                │
+     │                │    200 OK       │                 │                 │                │
+     │                │<────────────────│                 │                 │                │
+     │                │                 │                 │                 │                │
+     │ Mapping        │                 │                 │                 │                │
+     │ Successful     │                 │                 │                 │                │
+     │<───────────────│                 │                 │                 │                │
+     │                │                 │                 │                 │                │
+________________________________________________________________________________
+Key Methods:- Dashboard.handleStartMapping() - Initiates mapping request- DroneController.start_mapping() - API endpoint handler- DroneService.start_mapping() - Business logic for mapping- AreaMap.create_map() - Creates new area map record- Database.INSERT() - Persists area map data________________________________________________________________________________
+4.1.2 UC2: Start Detection Flight
+┌─────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌────────┐   ┌──────────┐
+│Operator │   │Dashboard │   │  Flight  │   │  Flight  │   │ Flight │   │ Database │
+│         │   │   Page   │   │Controller│   │ Service  │   │        │   │          │
+└────┬────┘   └────┬─────┘   └────┬─────┘   └────┬─────┘   └───┬────┘   └────┬─────┘
+     │             │              │              │              │             │
+     │ Click "Start│              │              │              │             │
+     │  Flight"    │              │              │              │             │
+     │────────────>│              │              │              │             │
+     │             │              │              │              │             │
+     │             │ POST /api/   │              │              │             │
+     │             │   flights    │              │              │             │
+     │             │─────────────>│              │              │             │
+     │             │              │              │              │             │
+     │             │              │create_flight()│             │             │
+     │             │              │─────────────>│              │             │
+     │             │              │              │              │             │
+     │             │              │              │ start()      │             │
+     │             │              │              │─────────────>│             │
+     │             │              │              │              │             │
+     │             │              │              │              │INSERT flight│
+     │             │              │              │              │────────────>│
+     │             │              │              │              │             │
+     │             │              │              │              │INSERT       │
+     │             │              │              │              │telemetry    │
+     │             │              │              │              │────────────>│
+     │             │              │              │              │             │
+     │             │              │              │              │ flight_id   │
+     │             │              │              │              │<────────────│
+     │             │              │              │              │             │
+     │             │              │              │    Flight    │             │
+     │             │              │              │<─────────────│             │
+     │             │              │              │              │             │
+     │             │              │    Flight    │              │             │
+     │             │              │<─────────────│              │             │
+     │             │              │              │              │             │
+     │             │   201 Created│              │              │             │
+     │             │<─────────────│              │              │             │
+     │             │              │              │              │             │
+     │ Flight      │              │              │              │             │
+     │ Started     │              │              │              │             │
+     │<────────────│              │              │              │             │
+     │             │              │              │              │             │
+________________________________________________________________________________
+Key Methods:- Dashboard.handleStartFlight() - Initiates flight- FlightController.create() - API endpoint handler- FlightService.create_flight() - Business logic- Flight.start() - Creates flight record- Database.INSERT() - Persists flight and telemetry4.1.3 UC3: Record Flight Video
+┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐
+│  Flight  │   │  Video   │   │  FFmpeg  │   │   File   │   │ Database │
+│ Service  │   │ Recorder │   │ Process  │   │  System  │   │          │
+└────┬─────┘   └────┬─────┘   └────┬─────┘   └────┬─────┘   └────┬─────┘
+     │              │              │              │              │
+     │ start_       │              │              │              │
+     │ recording()  │              │              │              │
+     │─────────────>│              │              │              │
+     │              │              │              │              │
+     │              │ initialize_  │              │              │
+     │              │  ffmpeg()    │              │              │
+     │              │─────────────>│              │              │
+     │              │              │              │              │
+     │              │    ready     │              │              │
+     │              │<─────────────│              │              │
+     │              │              │              │              │
+     │              │ capture_     │              │              │
+     │              │  frame()     │              │              │
+     │              │─────────────>│              │              │
+     │              │              │              │              │
+     │              │    frame     │              │              │
+     │              │<─────────────│              │              │
+     │              │              │              │              │
+     │              │ encode_video()              │              │
+     │              │─────────────>│              │              │
+     │              │              │              │              │
+     │              │              │ write_file() │              │
+     │              │              │─────────────>│              │
+     │              │              │              │              │
+     │              │              │   success    │              │
+     │              │              │<─────────────│              │
+     │              │              │              │              │
+     │              │              │              │              │
+     │              │ save_video_  │              │              │
+     │              │  path()      │              │              │
+     │              │──────────────────────────────────────────>│
+     │              │              │              │              │
+     │              │              │              │    success   │
+     │              │<──────────────────────────────────────────│
+     │              │              │              │              │
+     │   success    │              │              │              │
+     │<─────────────│              │              │              │
+     │              │              │              │              │
+________________________________________________________________________________
+Key Methods:- FlightService.start_recording() - Initiates video capture- VideoRecorder.initialize_ffmpeg() - Sets up FFmpeg stream- FFmpegProcess.capture_frame() - Captures video frames- FFmpegProcess.encode_video() - Encodes video stream- FileSystem.write_file() - Saves video to disk- Database.UPDATE() - Updates flight record with video path________________________________________________________________________________
+4.1.4 UC4: Detect Birds
+┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐
+│  Video   │   │Detection │   │   YOLO   │   │Detection │   │   File   │   │ Database │
+│ Recorder │   │ Service  │   │  Model   │   │  Image   │   │  System  │   │          │
+└────┬─────┘   └────┬─────┘   └────┬─────┘   └────┬─────┘   └────┬─────┘   └────┬─────┘
+     │              │              │              │              │              │
+     │ send_frame() │              │              │              │              │
+     │─────────────>│              │              │              │              │
+     │              │              │              │              │              │
+     │              │ preprocess_  │              │              │              │
+     │              │  frame()     │              │              │              │
+     │              │─────────────>│              │              │              │
+     │              │              │              │              │              │
+     │              │   frame      │              │              │              │
+     │              │<─────────────│              │              │              │
+     │              │              │              │              │              │
+     │              │ detect()     │              │              │              │
+     │              │─────────────>│              │              │              │
+     │              │              │              │              │              │
+     │              │  detections  │              │              │              │
+     │              │<─────────────│              │              │              │
+     │              │              │              │              │              │
+     │              │ draw_        │              │              │              │
+     │              │  bboxes()    │              │              │              │
+     │              │──────────────────────────>│              │              │
+     │              │              │              │              │              │
+     │              │              │   annotated_image           │              │
+     │              │<──────────────────────────│              │              │
+     │              │              │              │              │              │
+     │              │ save()       │              │              │              │
+     │              │──────────────────────────>│              │              │
+     │              │              │              │              │              │
+     │              │              │              │ write_image()│              │
+     │              │              │              │─────────────>│              │
+     │              │              │              │              │              │
+     │              │              │              │   success    │              │
+     │              │              │              │<─────────────│              │
+     │              │              │              │              │              │
+     │              │              │              │ INSERT       │              │
+     │              │              │              │ detection_   │              │
+     │              │              │              │ image        │              │
+     │              │              │              │─────────────────────────────>│
+     │              │              │              │              │              │
+     │              │              │              │              │UPDATE        │
+     │              │              │              │              │telemetry     │
+     │              │              │              │              │(detections++) │
+     │              │              │              │              │─────────────>│
+     │              │              │              │              │              │
+     │              │              │              │              │   success    │
+     │              │              │              │<─────────────────────────────│
+     │              │              │              │              │              │
+     │              │ DetectionImage              │              │              │
+     │              │<──────────────────────────│              │              │
+     │              │              │              │              │              │
+________________________________________________________________________________
+Key Methods:- VideoRecorder.send_frame() - Sends frame for detection- DetectionService.preprocess_frame() - Prepares frame for YOLO- YOLOModel.detect() - Performs bird detection- DetectionImage.draw_bboxes() - Annotates image with bounding boxes- DetectionImage.save() - Saves detection image- FileSystem.write_image() - Writes image to disk- Database.INSERT() - Records detection in database- Database.UPDATE() - Increments detection count in telemetry4.1.5 UC5: Chase Birds & Apply Counter Measures
+┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐
+│Detection │   │  Drone   │   │  Drone   │   │  Chase   │   │ Database │
+│ Service  │   │Controller│   │ Service  │   │  Event   │   │          │
+└────┬─────┘   └────┬─────┘   └────┬─────┘   └────┬─────┘   └────┬─────┘
+     │              │              │              │              │
+     │ bird_        │              │              │              │
+     │ detected()   │              │              │              │
+     │─────────────>│              │              │              │
+     │              │              │              │              │
+     │              │ initiate_    │              │              │
+     │              │  chase()     │              │              │
+     │              │─────────────>│              │              │
+     │              │              │              │              │
+     │              │              │ log_chase()  │              │
+     │              │              │─────────────>│              │
+     │              │              │              │              │
+     │              │              │              │INSERT chase_ │
+     │              │              │              │event         │
+     │              │              │              │─────────────>│
+     │              │              │              │              │
+     │              │              │              │  chase_id    │
+     │              │              │              │<─────────────│
+     │              │              │              │              │
+     │              │              │ calculate_   │              │
+     │              │              │ trajectory() │              │
+     │              │              │─────────────────────────────┐
+     │              │              │              │              │
+     │              │              │<─────────────────────────────
+     │              │              │              │              │
+     │              │              │ move_to_     │              │
+     │              │              │ location()   │              │
+     │              │              │──────────────────────────────┐
+     │              │              │              │              │
+     │              │              │<──────────────────────────────
+     │              │              │              │              │
+     │              │              │ activate_    │              │
+     │              │              │ countermeasure()            │
+     │              │              │──────────────────────────────┐
+     │              │              │              │              │
+     │              │              │<──────────────────────────────
+     │              │              │              │              │
+     │              │              │ return_to_   │              │
+     │              │              │ patrol()     │              │
+     │              │              │──────────────────────────────┐
+     │              │              │              │              │
+     │              │              │<──────────────────────────────
+     │              │              │              │              │
+     │              │              │ set_outcome()│              │
+     │              │              │─────────────>│              │
+     │              │              │              │              │
+     │              │              │              │UPDATE chase_ │
+     │              │              │              │event         │
+     │              │              │              │─────────────>│
+     │              │              │              │              │
+     │              │              │              │  success     │
+     │              │              │              │<─────────────│
+     │              │              │              │              │
+     │              │   success    │              │              │
+     │              │<─────────────│              │              │
+     │              │              │              │              │
+________________________________________________________________________________
+Key Methods:- DetectionService.bird_detected() - Triggers chase- DroneController.initiate_chase() - Starts chase sequence- DroneService.initiate_chase() - Business logic- ChaseEvent.log_chase() - Creates chase record- DroneService.calculate_trajectory() - Plans pursuit path- DroneService.move_to_location() - Executes movement- DroneService.activate_countermeasure() - Activates deterrent- DroneService.return_to_patrol() - Returns to patrol route- ChaseEvent.set_outcome() - Records chase result- Database.INSERT() - Creates chase event- Database.UPDATE() - Updates chase outcome________________________________________________________________________________
+4.1.6 UC6: Store Flight Data
+┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐
+│  Flight  │   │  Flight  │   │  Flight  │   │ Database │
+│Controller│   │ Service  │   │Repository│   │          │
+└────┬─────┘   └────┬─────┘   └────┬─────┘   └────┬─────┘
+     │              │              │              │
+     │ PUT /api/    │              │              │
+     │ flights/{id} │              │              │
+     │─────────────>│              │              │
+     │              │              │              │
+     │              │ update_      │              │
+     │              │ flight()     │              │
+     │              │─────────────>│              │
+     │              │              │              │
+     │              │              │ UPDATE flight│
+     │              │              │─────────────>│
+     │              │              │              │
+     │              │              │ UPDATE       │
+     │              │              │ telemetry    │
+     │              │              │─────────────>│
+     │              │              │              │
+     │              │              │   success    │
+     │              │              │<─────────────│
+     │              │              │              │
+     │              │    Flight    │              │
+     │              │<─────────────│              │
+     │              │              │              │
+     │    200 OK    │              │              │
+     │<─────────────│              │              │
+     │              │              │              │
+Key Methods:- FlightController.update() - API endpoint- FlightService.update_flight() - Business logic- FlightRepository.update() - Data access- Database.UPDATE() - Persists flight data- Database.UPDATE() - Updates telemetry4.1.7 UC7: Abort Mission
+┌─────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐
+│Operator │   │Dashboard │   │  Flight  │   │  Flight  │   │  Drone   │   │ Database │
+│         │   │   Page   │   │Controller│   │ Service  │   │ Service  │   │          │
+└────┬────┘   └────┬─────┘   └────┬─────┘   └────┬─────┘   └────┬─────┘   └────┬─────┘
+     │             │              │              │              │              │
+     │ Click "Abort│              │              │              │              │
+     │  Mission"   │              │              │              │              │
+     │────────────>│              │              │              │              │
+     │             │              │              │              │              │
+     │             │ POST /api/   │              │              │              │
+     │             │ flights/{id}/│              │              │              │
+     │             │   abort      │              │              │              │
+     │             │─────────────>│              │              │              │
+     │             │              │              │              │              │
+     │             │              │ abort_flight()              │              │
+     │             │              │─────────────>│              │              │
+     │             │              │              │              │              │
+     │             │              │              │ stop_        │              │
+     │             │              │              │ operations() │              │
+     │             │              │              │─────────────>│              │
+     │             │              │              │              │              │
+     │             │              │              │ stop_        │              │
+     │             │              │              │ recording()  │              │
+     │             │              │              │─────────────>│              │
+     │             │              │              │              │              │
+     │             │              │              │   success    │              │
+     │             │              │              │<─────────────│              │
+     │             │              │              │              │              │
+     │             │              │              │ return_home()│              │
+     │             │              │              │─────────────>│              │
+     │             │              │              │              │              │
+     │             │              │              │   success    │              │
+     │             │              │              │<─────────────│              │
+     │             │              │              │              │              │
+     │             │              │              │ UPDATE flight│              │
+     │             │              │              │ status=      │              │
+     │             │              │              │ "aborted"    │              │
+     │             │              │              │─────────────────────────────>│
+     │             │              │              │              │              │
+     │             │              │              │              │   success    │
+     │             │              │              │<─────────────────────────────│
+     │             │              │              │              │              │
+     │             │              │    Flight    │              │              │
+     │             │              │<─────────────│              │              │
+     │             │              │              │              │              │
+     │             │   200 OK     │              │              │              │
+     │             │<─────────────│              │              │              │
+     │             │              │              │              │              │
+     │ Mission     │              │              │              │              │
+     │ Aborted     │              │              │              │              │
+     │<────────────│              │              │              │              │
+     │             │              │              │              │              │
+Key Methods:- Dashboard.handleAbort() - Initiates abort- FlightController.abort() - API endpoint- FlightService.abort_flight() - Business logic- DroneService.stop_operations() - Stops all operations- DroneService.stop_recording() - Stops video- DroneService.return_home() - Returns drone- Database.UPDATE() - Sets flight status to "aborted"4.1.8 UC8: View Flight Results
+┌─────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐   ┌──────────┐
+│Operator │   │  Flight  │   │  Flight  │   │  Flight  │   │ Database │
+│         │   │ History  │   │Controller│   │ Service  │   │          │
+└────┬────┘   └────┬─────┘   └────┬─────┘   └────┬─────┘   └────┬─────┘
+     │             │              │              │              │
+     │ Navigate to │              │              │              │
+     │ Flight      │              │              │              │
+     │ History     │              │              │              │
+     │────────────>│              │              │              │
+     │             │              │              │              │
+     │             │ GET /api/    │              │              │
+     │             │  flights     │              │              │
+     │             │─────────────>│              │              │
+     │             │              │              │              │
+     │             │              │ get_all_     │              │
+     │             │              │ flights()    │              │
+     │             │              │─────────────>│              │
+     │             │              │              │              │
+     │             │              │              │ SELECT flights
+     │             │              │              │─────────────>│
+     │             │              │              │              │
+     │             │              │              │  List[Flight]│
+     │             │              │              │<─────────────│
+     │             │              │              │              │
+     │             │              │ List[Flight] │              │
+     │             │              │<─────────────│              │
+     │             │              │              │              │
+     │             │  200 OK +    │              │              │
+     │             │  flights     │              │              │
+     │             │<─────────────│              │              │
+     │             │              │              │              │
+     │ Display     │              │              │              │
+     │ Flights     │              │              │              │
+     │<────────────│              │              │              │
+     │             │              │              │              │
+     │ Select      │              │              │              │
+     │ Flight      │              │              │              │
+     │────────────>│              │              │              │
+     │             │              │              │              │
+     │             │ GET /api/    │              │              │
+     │             │ flights/{id}/│              │              │
+     │             │  detections  │              │              │
+     │             │─────────────>│              │              │
+     │             │              │              │              │
+     │             │              │ get_flight_  │              │
+     │             │              │ detections() │              │
+     │             │              │─────────────>│              │
+     │             │              │              │              │
+     │             │              │              │SELECT        │
+     │             │              │              │detection_    │
+     │             │              │              │images        │
+     │             │              │              │─────────────>│
+     │             │              │              │              │
+     │             │              │              │  List[       │
+     │             │              │              │  Detection   │
+     │             │              │              │  Image]      │
+     │             │              │              │<─────────────│
+     │             │              │              │              │
+     │             │              │ List[        │              │
+     │             │              │ DetectionImage]             │
+     │             │              │<─────────────│              │
+     │             │              │              │              │
+     │             │  200 OK +    │              │              │
+     │             │  detections  │              │              │
+     │             │<─────────────│              │              │
+     │             │              │              │              │
+     │ Display     │              │              │              │
+     │ Detection   │              │              │              │
+     │ Gallery     │              │              │              │
+     │<────────────│              │              │              │
+     │             │              │              │              │
+Key Methods:- FlightHistory.componentDidMount() - Loads flights on page load- FlightController.get_all() - API endpoint for all flights- FlightService.get_all_flights() - Business logic- Database.SELECT() - Retrieves flight records- FlightHistory.onFlightSelect() - Handles flight selection- FlightController.get_detections() - API endpoint for detections- FlightService.get_flight_detections() - Business logic- Database.SELECT() - Retrieves detection images________________________________________________________________________________
+4.2 Event Table
+The Scarecrow Drone system is event-driven, responding to various system and user events. Below are the key events that govern system behavior.4.2.1 Drone Events
+EventTriggerSystem ResponseState Changes**Connection Established**Successful MAVLink connection to drone- Update connection status to "connected"<br>- Enable flight controls<br>- Start telemetry monitoringDrone Connection: `disconnected` --> `connected`**Connection Lost**MAVLink connection timeout or failure- Update connection status to "disconnected"<br>- Disable flight controls<br>- Trigger failsafe if flight in progress<br>- Log connection errorDrone Connection: `connected` --> `disconnected`<br>Flight: `in_progress` --> `aborted` (if active)**Battery Low**Battery level drops below 20% threshold- Alert operator with warning message<br>- If in chase, abort chase immediately<br>- Initiate return-to-home sequence<br>- Log battery warning eventFlight: `in_progress` --> `returning_home`**Failsafe Triggered**Loss of communication or critical error- Drone automatically lands or returns home<br>- Stop all operations<br>- Save partial data<br>- Log failsafe eventFlight: `in_progress` --> `failsafe`<br>Drone: `any_state` --> `failsafe_mode`**Camera Feed Available**Video stream successfully connected- Enable detection processing<br>- Start video recording<br>- Update camera statusVideo Recording: `idle` --> `recording`**Camera Feed Lost**Video stream disconnected or timeout- Disable detection processing<br>- Stop video recording<br>- Alert operator<br>- Flight continues with telemetry onlyVideo Recording: `recording` --> `stopped`<br>Detection: `processing` --> `idle`4.2.2 Area Mapping Events
+EventTriggerSystem ResponseState Changes**Mapping Started**Operator clicks "Start Mapping" button- Create new area map record in database<br>- Initialize drone for mapping flight<br>- Start camera feed for terrain capture<br>- Update UI to show mapping statusAreaMap: `draft` --> `mapping_in_progress`**Terrain Data Captured**Drone completes area scan- Process captured terrain/boundary data<br>- Calculate area size<br>- Store boundary coordinatesAreaMap: `mapping_in_progress` --> `processing`**Mapping Completed**Operator confirms mapped boundaries- Finalize area map record<br>- Set status to "active"<br>- Store mapping data for future flights<br>- Enable detection flights for this areaAreaMap: `processing` --> `active`**Mapping Aborted**Communication lost or operator cancels- Save partial mapping data<br>- Set status to "draft"<br>- Alert operator<br>- Log abort eventAreaMap: `mapping_in_progress` --> `draft`**Boundaries Adjusted**Operator manually adjusts mapped boundaries- Update boundary coordinates<br>- Recalculate area size<br>- Update timestamp<br>- Save changes to databaseAreaMap: `active` --> `active` (updated)4.2.3 Flight Events
+EventTriggerSystem ResponseState Changes**Flight Started**Operator clicks "Start Flight" button- Create new flight record in database<br>- Initialize telemetry tracking<br>- Start video recording<br>- Begin detection processing<br>- Update UI to show flight statusFlight: `not_started` --> `in_progress`<br>Video: `idle` --> `recording`<br>Detection: `idle` --> `active`**Flight Ended**Operator clicks "Stop Flight" button- Stop video recording<br>- Stop detection processing<br>- Update flight record with end time<br>- Save final telemetry data<br>- Set flight status to "completed"Flight: `in_progress` --> `completed`<br>Video: `recording` --> `stopped`<br>Detection: `active` --> `idle`**Flight Aborted**Operator clicks "Abort Mission" or system error- Immediately stop all operations<br>- Drone returns home or lands<br>- Save partial data<br>- Set flight status to "aborted"<br>- Alert operatorFlight: `in_progress` --> `aborted`<br>Drone: `any_state` --> `returning_home`**Video Recording Started**Flight started or camera feed available- Initialize FFmpeg stream<br>- Begin capturing frames<br>- Create video file path<br>- Update flight record with video pathVideo: `idle` --> `recording`**Video Recording Stopped**Flight ended or camera feed lost- Stop FFmpeg stream<br>- Finalize and save video file<br>- Update flight record with final video pathVideo: `recording` --> `stopped`**Video Recording Failed**FFmpeg error or storage full- Log error message<br>- Alert operator<br>- Flight continues without video<br>- Set video status to "failed"Video: `recording` --> `failed`4.2.4 Detection Events
+EventTriggerSystem ResponseState Changes**Bird Detected**YOLO model detects bird with confidence > threshold- Extract bounding box coordinates<br>- Annotate frame with detection<br>- Save detection image<br>- Increment detection count in telemetry<br>- Trigger chase sequence<br>- Log detection eventDetection: `scanning` --> `bird_detected`<br>Chase: `idle` --> `initiating`**No Detection in Frame**YOLO model processes frame with no birds detected- Continue to next frame<br>- No action takenDetection: `scanning` --> `scanning`**Frame Processed**Detection service completes frame analysis- Return frame to video stream<br>- Continue processing next frameDetection: `processing_frame` --> `scanning`**Multiple Birds Detected**YOLO model detects multiple birds in single frame- Create separate detection record for each bird<br>- Save annotated image with all detections<br>- Calculate pursuit priority (closest bird)<br>- Trigger chase for highest priority targetDetection: `scanning` --> `multiple_birds_detected`<br>Chase: `idle` --> `initiating`**Detection Confidence Threshold Met**Detection confidence score exceeds configured threshold- Confirm detection as valid<br>- Proceed with detection recording and chaseDetection: `uncertain` --> `confirmed`4.2.5 Chase Events
+EventTriggerSystem ResponseState Changes**Chase Initiated**Bird detected during flight- Create chase event record<br>- Calculate pursuit trajectory<br>- Move drone toward bird location<br>- Log chase start timeChase: `idle` --> `pursuing`**Chase Completed**Birds dispersed or chase timeout reached- Stop pursuit<br>- Return to patrol route<br>- Update chase event with end time<br>- Set chase outcomeChase: `pursuing` --> `completed`**Birds Dispersed**Birds leave area during chase- Record successful outcome<br>- Return to patrol<br>- Log dispersion eventChase: `pursuing` --> `completed` (outcome: "dispersed")**Birds Lost**Birds move out of camera range- Record unsuccessful outcome<br>- Return to patrol<br>- Log lost eventChase: `pursuing` --> `completed` (outcome: "lost")**Counter-Measure Activated (Sound)**Chase sequence reaches target location- Activate speaker/buzzer<br>- Play deterrent sound<br>- Log counter-measure typeChase: `pursuing` --> `applying_countermeasure`**Counter-Measure Activated (Movement)**Chase sequence uses movement pattern- Execute aggressive flight maneuver<br>- Log counter-measure typeChase: `pursuing` --> `applying_countermeasure`4.2.6 System Events
+EventTriggerSystem ResponseState Changes**Shutdown Signal**System receives shutdown command (SIGTERM/SIGINT)- Write shutdown message to system logger<br>- Save all open buffers<br>- Close all open files (user files, system files, config files)<br>- Stop video recording gracefully<br>- Update flight status to "aborted" if in progress<br>- Close database connections<br>- Terminate all processesSystem: `running` --> `shutting_down` --> `stopped`<br>Flight: `in_progress` --> `aborted`**Database Error**Database query fails or connection lost- Log error with details<br>- Queue data for retry<br>- Alert operator via UI notification<br>- Continue operations if possibleDatabase: `connected` --> `error`**Storage Full**Disk space below threshold- Alert operator with critical warning<br>- Stop video recording<br>- Continue detection with image saving disabled<br>- Log storage errorStorage: `available` --> `full`<br>Video: `recording` --> `stopped`**Camera Unavailable**Camera initialization fails- Log camera error<br>- Alert operator<br>- Disable flight start until camera availableCamera: `available` --> `unavailable`<br>Flight: `start_disabled`**Model Loading Failed**YOLO model fails to load on startup- Log critical error<br>- Disable detection functionality<br>- Alert operator<br>- System enters degraded modeDetection: `initializing` --> `failed`<br>System: `starting` --> `degraded`**FFmpeg Initialization Failed**FFmpeg process fails to start- Log FFmpeg error<br>- Disable video recording<br>- Detection can continue with live stream<br>- Alert operatorVideo: `initializing` --> `failed`4.2.7 Example Event Scenario
+Scenario: Shutdown Signal During Active FlightUpon receiving a shutdown signal (SIGTERM), the system performs the following sequence:1. Event Detected: System receives shutdown signal2. Logger Notification: Write "System shutdown initiated" message to system logger3. Flight Check: Determine if flight is in progress4. Active Flight Handling:- Stop detection processing immediately- Stop video recording and finalize video file- Update flight status to "aborted"- Save final telemetry data (battery level, distance, detection count)- Command drone to return home5. Buffer Management: Save all open buffers to disk6. File Closure: Close all open files:- User files (video recordings)- System files (logs, temporary files)- Configuration files (settings, area maps)7. Database Finalization:- Commit all pending transactions- Close database connection8. Process Termination: Gracefully terminate all child processes9. System Exit: Exit with code 0State Transitions:- System: running --> shutting_down --> stopped- Flight: in_progress --> aborted- Video: recording --> stopped- Detection: active --> idle- Database: connected --> closed________________________________________________________________________________
+4.3 State Machines
+This section describes the state machines for key entities in the Scarecrow Drone system.4.3.1 Flight State Machine
+The Flight entity transitions through the following states during its lifecycle:                                           ┌─────────────────┐
+                                           │   Connection    │
+                                           │     Lost        │
+                                           │                 │
+                                           └────────┬────────┘
+                                                    │
+                                                    │ Failsafe
+                                                    ▼
+        ●──────────────────────────────────────────────────────────--┐
+        │                                                            │
+        │ Start Flight                                               │
+        ▼                                                            │
+┌───────────────┐                                                    │
+│               │ Stop Flight                                        │
+│  In Progress  │──────────────────────────────────────-─┐           │
+│               │                                        │           │
+└───────┬───────┘                                        │           │
+        │                                                │           │
+        │ Abort Mission / Battery Low                    │           │
+        │                                                │           │
+        ▼                                                ▼           │
+┌───────────────┐                                  ┌───────────┐     │
+│               │                                  │           │     │
+│    Aborted    │                                  │ Completed │     │
+│               │                                  │           │     │
+└───────────────┘                                  └───────────┘     │
+        │                                                │           │
+        │                                                │           │
+        └────────────────────┬───────────────────────────┘           │
+                             │                                       │
+                             │                                       │
+                             ▼                                       │
+                      ┌─────────────┐                                │
+                      │             │                                │
+                      │   Failed    │◀───────────────────────────────┘
+                      │             │  System Error
+                      └─────────────┘
+                             │
+                             │
+                             ▼
+                            ◉
+States:- ● (Initial): Flight not yet started- In Progress: Flight is actively running, detection and video recording active- Aborted: Flight was manually aborted by operator or system (battery low, connection lost)- Completed: Flight ended normally by operator- Failed: Flight failed due to system error or critical failure- ◉ (Final): Flight record finalizedTransitions:From StateEventTo StateInitialOperator clicks "Start Flight"In ProgressIn ProgressOperator clicks "Stop Flight"CompletedIn ProgressOperator clicks "Abort Mission"AbortedIn ProgressBattery Low warningAbortedIn ProgressConnection LostAbortedIn ProgressSystem ErrorFailedCompletedN/A (Terminal)FinalAbortedN/A (Terminal)FinalFailedN/A (Terminal)Final4.3.2 Drone Connection State Machine
+The Drone Connection manages the communication link between ground station and drone:        ●
+        │
+        │ System Start
+        ▼
+┌───────────────┐
+│               │ Connect Command
+│ Disconnected  │────────────────────────────-────┐
+│               │                                 │
+└───────┬───────┘                                 │
+        │                                         │
+        │ Retry After Error                       │
+        │                                         │
+        │                                         ▼
+        │                                  ┌─────────────┐
+        │                                  │             │
+        │                 Connection Lost  │ Connecting  │
+        └──────────────────────────────────│             │
+                                           └──────┬──────┘
+                                                  │
+                                                  │ MAVLink Handshake Success
+                                                  ▼
+                                          ┌───────────────┐
+                                          │               │
+                 ┌────────────────────────│   Connected   │
+                 │                        │               │
+                 │ Disconnect Command /   └───────────────┘
+                 │ Connection Timeout              │
+                 │                                 │ Communication Error
+                 │                                 ▼
+                 │                          ┌─────────────┐
+                 └─────────────────────────▶│             │
+                                            │    Error    │
+                                            │             │
+                                            └─────────────┘
+States:- ● (Initial): System starting up- Disconnected: No active connection to drone- Connecting: Attempting to establish MAVLink connection- Connected: Active communication with drone- Error: Connection error occurredTransitions:From StateEventTo StateInitialSystem StartDisconnectedDisconnectedOperator clicks "Connect"ConnectingConnectingMAVLink handshake successConnectedConnectingConnection timeoutErrorConnectedCommunication errorErrorConnectedOperator clicks "Disconnect"DisconnectedConnectedConnection lost/timeoutDisconnectedErrorRetry commandConnectingErrorUser cancelsDisconnected4.3.3 Detection Processing State Machine
+The Detection Processing state machine governs the bird detection workflow:        ●
+        │
+        │ Flight Started
+        ▼
+┌───────────────┐
+│               │ Camera Feed Lost
+│     Idle      │◀──────────────────────────────-────────────┐
+│               │                                            │
+└───────┬───────┘                                            │
+        │                                                    │
+        │ Camera Feed Available                              │
+        ▼                                                    │
+┌───────────────┐                                            │
+│               │                                            │
+│   Scanning    │────────────────────────────────────────────┤
+│               │                                            │
+└───────┬───────┘                                            │
+        │                                                    │
+        │ Frame Received                                     │
+        ▼                                                    │
+┌───────────────┐                                            │
+│               │                                            │
+│  Processing   │────────────────────────────────────────────┤
+│     Frame     │ Flight Stopped                             │
+│               │                                            │
+└───────┬───────┘                                            │
+        │                                                    │
+        │ Detection Result Available                         │
+        ▼                                                    │
+┌───────────────┐                                            │
+│               │ No Birds                                   │
+│     Bird      │────────────────────────────────────────────┤
+│   Detected    │ Detected                                   │
+│               │                                            │
+└───────┬───────┘                                            │
+        │                                                    │
+        │ Birds Detected                                     │
+        ▼                                                    │
+┌───────────────┐                                            │
+│               │                                            │
+│    Saving     │────────────────────────────────────────────┤
+│   Detection   │ Save Complete                              │
+│               │                                            │
+└───────────────┘                                            │
+        │                                                    │
+        │ Continue to Next Frame                             │
+        └────────────────────────────────────────────────────┘
+States:- ● (Initial): Detection service starting- Idle: No active detection processing- Scanning: Waiting for frames to process- Processing Frame: Analyzing frame with YOLO model- Bird Detected: Bird found in frame, preparing to save- Saving Detection: Recording detection image and dataTransitions:From StateEventTo StateInitialFlight StartedIdleIdleCamera Feed AvailableScanningScanningFrame ReceivedProcessing FrameScanningFlight StoppedIdleProcessing FrameDetection Complete (no birds)ScanningProcessing FrameDetection Complete (birds found)Bird DetectedProcessing FrameFlight StoppedIdleBird DetectedSave detectionSaving DetectionSaving DetectionSave completeScanningScanningCamera Feed LostIdleProcessing FrameCamera Feed LostIdle4.3.4 Chase Sequence State Machine
+The Chase Sequence state machine manages bird pursuit operations:        ●
+        │
+        │ Flight Started
+        ▼
+┌───────────────┐
+│               │
+│   Patrolling  │◀─────────────────────────────────-─────────┐
+│               │                                            │
+└───────┬───────┘                                            │
+        │                                                    │
+        │ Bird Detected                                      │
+        ▼                                                    │
+┌───────────────┐                                            │
+│               │ Birds Out of Range                         │
+│  Calculating  │────────────────────────────────────────────┤
+│  Trajectory   │                                            │
+│               │                                            │
+└───────┬───────┘                                            │
+        │                                                    │
+        │ Trajectory Calculated                              │
+        ▼                                                    │
+┌───────────────┐                                            │
+│               │                                            │
+│   Pursuing    │────────────────────────────────────────────┤
+│     Birds     │ Battery Low / Flight Aborted               │
+│               │                                            │
+└───────┬───────┘                                            │
+        │                                                    │
+        │ Reached Target Location                            │
+        ▼                                                    │
+┌───────────────┐                                            │
+│               │                                            │
+│   Applying    │                                            │
+│    Counter    │                                            │
+│   Measures    │                                            │
+│               │                                            │
+└───────┬───────┘                                            │
+        │                                                    │
+        │ Counter-measure Complete                           │
+        ▼                                                    │
+┌───────────────┐                                            │
+│               │                                            │
+│  Monitoring   │                                            │
+│     Birds     │                                            │
+│               │                                            │
+└───────┬───────┘                                            │
+        │                                                    │
+        ├─────────────Birds Still Present──────────────┐     │
+        │                                               │    │
+        │ Birds Dispersed / Lost                        │    │
+        ▼                                               │    │
+┌───────────────┐                                       │    │
+│               │                                       │    │
+│  Returning to │                                       │    │
+│    Patrol     │                                       │    │
+│               │                                       │    │
+└───────┬───────┘                                       │    │
+        │                                               │    │
+        │ Back at Patrol Route                          │    │
+        └───────────────────────────────────────────────┼────┘
+                                                        │
+                                                        │
+                                                        ▼
+                                                ┌───────────────┐
+                                                │               │
+                                                │   Pursuing    │
+                                                │  (Re-engage)  │
+                                                │               │
+                                                └───────┬───────┘
+                                                        │
+                                                        │ (loops back)
+                                                        └────────────────┘
+States:- ● (Initial): Chase system starting- Patrolling: Drone following patrol route, scanning for birds- Calculating Trajectory: Planning pursuit path to bird location- Pursuing Birds: Moving toward detected birds- Applying Counter Measures: Activating deterrents (sound/movement)- Monitoring Birds: Observing bird response to counter-measures- Returning to Patrol: Moving back to patrol route after chaseTransitions:From StateEventTo StateInitialFlight StartedPatrollingPatrollingBird DetectedCalculating TrajectoryCalculating TrajectoryTrajectory ReadyPursuing BirdsCalculating TrajectoryBirds Out of RangePatrollingPursuing BirdsReached TargetApplying Counter MeasuresPursuing BirdsBattery LowReturning to PatrolPursuing BirdsFlight AbortedPatrollingApplying Counter MeasuresCounter-measure CompleteMonitoring BirdsMonitoring BirdsBirds DispersedReturning to PatrolMonitoring BirdsBirds Lost (out of view)Returning to PatrolMonitoring BirdsBirds Still PresentPursuing BirdsReturning to PatrolBack at Patrol RoutePatrolling________________________________________________________________________________
+5. Object-Oriented Analysis
+5.1 Class Diagrams
+AreaMap
+Attributes:- id: int- name: string- created_at: datetime- updated_at: datetime- boundaries: JSON/string- area_size: float- status: stringOperations:- create_map(): void- update_boundaries(boundaries): void- validate_boundaries(): bool- get_boundaries(): JSON- set_status(status): void- get_area_size(): floatRelations:- One-to-Many with Flight________________________________________________________________________________
+Flight
+Attributes:- id: int- area_map_id: int (FK)- start_time: datetime- end_time: datetime- status: string- video_path: stringOperations:- start(): void- stop(): void- abort(): void- get_duration(): timedelta- get_detection_count(): int- get_detections(): List[DetectionImage]- add_detection(detection): void- get_video_path(): string- set_video_path(path): void- get_telemetry(): Telemetry- set_telemetry(telemetry): void- get_area_map(): AreaMap- set_area_map(area_map): voidRelations:- Many-to-One with AreaMap- One-to-Many with DetectionImage- One-to-One with Telemetry- One-to-Many with ChaseEvent________________________________________________________________________________
+DetectionImage
+Attributes:- id: int- flight_id: int (FK)- image_path: string- timestamp: datetimeOperations:- save(): void- get_flight(): Flight- get_timestamp(): datetime- get_image_path(): string- set_image_path(path): voidRelations:- Many-to-One with Flight- One-to-Zero-or-One with ChaseEvent________________________________________________________________________________
+Telemetry
+Attributes:- flight_id: int (PK, FK)- battery_level: float- distance: float- detections: intOperations:- get_flight(): Flight- update_battery(level): void- add_distance(dist): void- increment_detections(): voidRelations:- One-to-One with Flight________________________________________________________________________________
+ChaseEvent
+Attributes:- id: int- flight_id: int (FK)- detection_image_id: int (FK)- start_time: datetime- end_time: datetime- counter_measure_type: string- outcome: stringOperations:- log_chase(): void- get_duration(): timedelta- get_outcome(): string- set_outcome(outcome): voidRelations:- Many-to-One with Flight- Zero-or-One-to-One with DetectionImage________________________________________________________________________________
+5.2 Class Description
+AreaMap
+Responsibilities:- Stores and manages geographical boundary data for drone flight areas- Validates boundary coordinates to ensure they form valid polygons- Calculates total area size from boundary coordinates- Maintains status (active/draft) for area mapsMain methods:create_map():context AreaMap::create_map()
+pre: name.size() > 0 and boundaries <> null
+post: id > 0 and created_at = now() and updated_at = now()
+update_boundaries(boundaries: String):context AreaMap::update_boundaries(boundaries: String)
+pre: boundaries <> null and self.id > 0
+post: self.boundaries = boundaries and self.updated_at = now() and self.area_size >= 0
+validate_boundaries(): Booleancontext AreaMap::validate_boundaries(): Boolean
+pre: boundaries <> null
+post: result = (boundaries is valid JSON and coordinate_count >= 3)
+Invariants:context AreaMap
+inv: id > 0 implies (name.size() > 0 and area_size >= 0)
+inv: status = 'active' or status = 'draft'
+inv: updated_at >= created_at
+Implementation hints:- Use JSON library to parse and validate boundaries format- Boundary validation should check for minimum 3 coordinate points________________________________________________________________________________
+Flight
+Responsibilities:- Manages flight session lifecycle from start to completion- Tracks flight duration, status, and associated video recording- Aggregates detections, telemetry, and chase events for the flight- Enforces valid state transitions (in_progress --> completed/failed/aborted)Main methods:start():context Flight::start()
+pre: status <> 'in_progress'
+post: status = 'in_progress' and start_time = now() and end_time = null
+stop():context Flight::stop()
+pre: status = 'in_progress'
+post: status = 'completed' and end_time = now() and video_path <> null
+abort():context Flight::abort()
+pre: status = 'in_progress'
+post: status = 'aborted' and end_time = now()
+get_duration(): TimeDeltacontext Flight::get_duration(): TimeDelta
+pre: start_time <> null
+post: result = (if end_time = null then now() - start_time else end_time - start_time endif)
+Invariants:context Flight
+inv: id > 0
+inv: start_time <> null
+inv: end_time <> null implies end_time >= start_time
+inv: status = 'in_progress' or status = 'completed' or status = 'failed' or status = 'aborted'
+inv: end_time = null implies status = 'in_progress'
+Implementation hints:- start() and stop() methods should be synchronized to prevent race conditions- get_duration() should handle case where end_time is null (flight in progress)________________________________________________________________________________
+DetectionImage
+Responsibilities:- Stores reference to captured bird detection images- Links detection events to specific flights- Records timestamp of when detection occurred- Maintains file path to stored detection imageMain methods:save():context DetectionImage::save()
+pre: flight_id > 0 and image_path.size() > 0
+post: id > 0 and timestamp = now()
+get_timestamp(): DateTimecontext DetectionImage::get_timestamp(): DateTime
+pre: timestamp <> null
+post: result = timestamp
+Invariants:context DetectionImage
+inv: id > 0
+inv: flight_id > 0
+inv: image_path.size() > 0
+inv: timestamp <> null
+Implementation hints:- save() should trigger observer pattern to notify Flight and update telemetry- Validate image_path points to existing file before saving________________________________________________________________________________
+Telemetry
+Responsibilities:- Aggregates real-time flight metrics (battery, distance, detections)- Maintains one-to-one relationship with Flight- Provides methods to update individual metrics- Acts as centralized data store for flight statisticsMain methods:update_battery(level: Float):context Telemetry::update_battery(level: Float)
+pre: level >= 0 and level <= 100
+post: battery_level = level
+add_distance(dist: Float):context Telemetry::add_distance(dist: Float)
+pre: dist >= 0
+post: distance = distance@pre + dist
+increment_detections():context Telemetry::increment_detections()
+pre: true
+post: detections = detections@pre + 1
+Invariants:context Telemetry
+inv: flight_id > 0
+inv: battery_level >= 0 and battery_level <= 100
+inv: distance >= 0
+inv: detections >= 0
+Implementation hints:- All update methods should be thread-safe for concurrent access________________________________________________________________________________
+ChaseEvent
+Responsibilities:- Logs bird chase sequences with start and end times- Records counter-measure type applied (sound/movement/combined)- Tracks outcome of chase (dispersed/lost/aborted)- Links chase event to triggering detection image (optional)Main methods:log_chase():context ChaseEvent::log_chase()
+pre: flight_id > 0 and counter_measure_type <> null
+post: id > 0 and start_time = now()
+get_duration(): TimeDeltacontext ChaseEvent::get_duration(): TimeDelta
+pre: start_time <> null
+post: result = (if end_time = null then now() - start_time else end_time - start_time endif)
+set_outcome(outcome: String):context ChaseEvent::set_outcome(outcome: String)
+pre: outcome = 'dispersed' or outcome = 'lost' or outcome = 'aborted'
+post: self.outcome = outcome and end_time = now()
+Invariants:context ChaseEvent
+inv: id > 0
+inv: flight_id > 0
+inv: start_time <> null
+inv: end_time <> null implies end_time > start_time
+inv: counter_measure_type = 'sound' or counter_measure_type = 'movement' or counter_measure_type = 'combined'
+inv: outcome = null or outcome = 'dispersed' or outcome = 'lost' or outcome = 'aborted'
+Implementation hints:- counter_measure_type should be validated against enum values- get_duration() should handle null end_time for in-progress chases________________________________________________________________________________
+5.3 Packages
+The Scarecrow Drone system is organized into a layered package hierarchy following the repository pattern and separation of concerns principle.Package Hierarchy:scarecrow_drone/
+│
+├── dto/
+│   ├── area_map_dto.py
+│   ├── flight_dto.py
+│   ├── detection_image_dto.py
+│   ├── telemetry_dto.py
+│   └── chase_event_dto.py
+│
+├── database/
+│   ├── db_connection.py
+│   ├── area_map_repository.py
+│   ├── flight_repository.py
+│   ├── detection_image_repository.py
+│   ├── telemetry_repository.py
+│   └── chase_event_repository.py
+│
+├── services/
+│   ├── area_map_service.py
+│   ├── flight_service.py
+│   ├── detection_service.py
+│   ├── telemetry_service.py
+│   ├── chase_event_service.py
+│   ├── drone_service.py
+│   └── recording_service.py
+│
+├── controllers/
+│   ├── area_map_controller.py
+│   ├── flight_controller.py
+│   ├── detection_controller.py
+│   ├── telemetry_controller.py
+│   └── chase_event_controller.py
+│
+└── app.py
+Package Descriptions:dto/ (Data Transfer Objects)Contains data transfer object classes that define the structure for data exchange between layers. Each model has a corresponding DTO class:- AreaMapDTO: Data structure for area map information- FlightDTO: Data structure for flight session information- DetectionImageDTO: Data structure for detection image metadata- TelemetryDTO: Data structure for flight telemetry data- ChaseEventDTO: Data structure for chase event recordsdatabase/ (Data Access Layer)Contains repository classes that handle all database operations and SQL queries. Each model has a corresponding repository:- db_connection.py: Database connection management- AreaMapRepository: CRUD operations for area_maps table- FlightRepository: CRUD operations for flights table- DetectionImageRepository: CRUD operations for detection_images table- TelemetryRepository: CRUD operations for telemetry table- ChaseEventRepository: CRUD operations for chase_events tableservices/ (Business Logic Layer)Contains service classes that implement business logic and orchestrate operations between controllers and repositories:- AreaMapService: Area mapping business logic- FlightService: Flight management business logic- DetectionService: Bird detection processing logic- TelemetryService: Telemetry data processing logic- ChaseEventService: Chase event management logic- DroneService: Drone control and monitoring- RecordingService: Video recording managementcontrollers/ (API/Presentation Layer)Contains controller classes that handle HTTP requests and responses, exposing REST API endpoints:- AreaMapController: API endpoints for area map operations- FlightController: API endpoints for flight operations- DetectionController: API endpoints for detection data- TelemetryController: API endpoints for telemetry data- ChaseEventController: API endpoints for chase event dataPackage Dependencies:controllers --> services --> database --> dto
+     │           │           │
+     └───────────┴───────────┴────--> (all use dto for data transfer)
+The dependency flow follows a strict layered architecture:1. Controllers depend on Services2. Services depend on Repositories (database package)3. Repositories depend on DTOs and database connection4. All layers use DTOs for data transfer________________________________________________________________________________
+5.4 Unit Testing
+Design unit tests for each class, focusing on properties of classes and methods and their invariants. The following tests verify invariants, pre-conditions, post-conditions, and boundary conditions from Section 5.2.AreaMap Unit Tests
+Invariant Tests:- Test inv: id > 0 implies (name.size() > 0 and area_size >= 0)- Test inv: status = 'active' or status = 'draft'- Test inv: updated_at >= created_atcreate_map() Tests:- Test pre-condition: name.size() > 0 and boundaries <> null- Test post-condition: id > 0 and created_at = now() and updated_at = now()- Boundary test: Empty name string (should violate pre-condition)- Boundary test: Null boundaries (should violate pre-condition)- Boundary test: Minimum valid boundaries with exactly 3 coordinate pointsupdate_boundaries() Tests:- Test pre-condition: boundaries <> null and self.id > 0- Test post-condition: self.boundaries = boundaries and self.updated_at = now() and self.area_size >= 0- Boundary test: Null boundaries (should violate pre-condition)- Boundary test: Non-existent AreaMap with id = 0 (should violate pre-condition)- Boundary test: Updated timestamp is greater than created timestampvalidate_boundaries() Tests:- Test pre-condition: boundaries <> null- Test post-condition: result = (boundaries is valid JSON and coordinate_count >= 3)- Boundary test: Boundaries with less than 3 coordinate points (should return false)- Boundary test: Invalid JSON format (should return false)- Boundary test: Exactly 3 coordinate points (minimum valid, should return true)________________________________________________________________________________
+Flight Unit Tests
+Invariant Tests:- Test inv: id > 0- Test inv: start_time <> null- Test inv: end_time <> null implies end_time >= start_time- Test inv: status = 'in_progress' or status = 'completed' or status = 'failed' or status = 'aborted'- Test inv: end_time = null implies status = 'in_progress'start() Tests:- Test pre-condition: status <> 'in_progress'- Test post-condition: status = 'in_progress' and start_time = now() and end_time = null- Boundary test: Calling start() when already in_progress (should violate pre-condition)- Boundary test: Starting from 'completed' status (should succeed)- Boundary test: Starting from 'failed' status (should succeed)stop() Tests:- Test pre-condition: status = 'in_progress'- Test post-condition: status = 'completed' and end_time = now() and video_path <> null- Boundary test: Calling stop() when not in_progress (should violate pre-condition)- Boundary test: End time is after start time- Boundary test: Video path is set after stoppingabort() Tests:- Test pre-condition: status = 'in_progress'- Test post-condition: status = 'aborted' and end_time = now()- Boundary test: Calling abort() when not in_progress (should violate pre-condition)- Boundary test: End time is after start timeget_duration() Tests:- Test pre-condition: start_time <> null- Test post-condition: result = (if end_time = null then now() - start_time else end_time - start_time endif)- Boundary test: Duration when flight is in progress (end_time = null)- Boundary test: Duration when flight is completed (end_time set)- Boundary test: Duration is always non-negative________________________________________________________________________________
+DetectionImage Unit Tests
+Invariant Tests:- Test inv: id > 0- Test inv: flight_id > 0- Test inv: image_path.size() > 0- Test inv: timestamp <> nullsave() Tests:- Test pre-condition: flight_id > 0 and image_path.size() > 0- Test post-condition: id > 0 and timestamp = now()- Boundary test: flight_id = 0 (should violate pre-condition)- Boundary test: Empty image_path (should violate pre-condition)- Boundary test: Non-existent flight_id (should violate pre-condition)- Boundary test: Timestamp is automatically set on saveget_timestamp() Tests:- Test pre-condition: timestamp <> null- Test post-condition: result = timestamp- Boundary test: Accessing timestamp before save (should handle gracefully)- Boundary test: Timestamp remains unchanged after retrieval________________________________________________________________________________
+Telemetry Unit Tests
+Invariant Tests:- Test inv: flight_id > 0- Test inv: battery_level >= 0 and battery_level <= 100- Test inv: distance >= 0- Test inv: detections >= 0update_battery() Tests:- Test pre-condition: level >= 0 and level <= 100- Test post-condition: battery_level = level- Boundary test: level = 0 (minimum valid value)- Boundary test: level = 100 (maximum valid value)- Boundary test: level = -1 (should violate pre-condition)- Boundary test: level = 101 (should violate pre-condition)- Boundary test: level = 50.5 (valid decimal value)add_distance() Tests:- Test pre-condition: dist >= 0- Test post-condition: distance = distance@pre + dist- Boundary test: dist = 0 (should succeed, no change)- Boundary test: dist < 0 (should violate pre-condition)- Boundary test: Adding distance multiple times accumulates correctly- Boundary test: Large distance valuesincrement_detections() Tests:- Test pre-condition: true- Test post-condition: detections = detections@pre + 1- Boundary test: Starting from detections = 0- Boundary test: Incrementing multiple times- Boundary test: Detections count never decreases________________________________________________________________________________
+ChaseEvent Unit Tests
+Invariant Tests:- Test inv: id > 0- Test inv: flight_id > 0- Test inv: start_time <> null- Test inv: end_time <> null implies end_time > start_time- Test inv: counter_measure_type = 'sound' or counter_measure_type = 'movement' or counter_measure_type = 'combined'- Test inv: outcome = null or outcome = 'dispersed' or outcome = 'lost' or outcome = 'aborted'log_chase() Tests:- Test pre-condition: flight_id > 0 and counter_measure_type <> null- Test post-condition: id > 0 and start_time = now()- Boundary test: flight_id = 0 (should violate pre-condition)- Boundary test: Null counter_measure_type (should violate pre-condition)- Boundary test: Invalid counter_measure_type value (should violate invariant)get_duration() Tests:- Test pre-condition: start_time <> null- Test post-condition: result = (if end_time = null then now() - start_time else end_time - start_time endif)- Boundary test: Duration when chase is in progress (end_time = null)- Boundary test: Duration when chase is ended (end_time set)- Boundary test: Duration is always non-negativeset_outcome() Tests:- Test pre-condition: outcome = 'dispersed' or outcome = 'lost' or outcome = 'aborted'- Test post-condition: self.outcome = outcome and end_time = now()- Boundary test: Invalid outcome value (should violate pre-condition)- Boundary test: Setting outcome 'dispersed' (valid)- Boundary test: Setting outcome 'lost' (valid)- Boundary test: Setting outcome 'aborted' (valid)- Boundary test: End time is set when outcome is set- Boundary test: End time is after start time________________________________________________________________________________
+6. User Interface Draft
+Describe the main user interfaces of the system. Simple drawings of the main screens focusing on inputs and outputs.6.1 Area Mapping Interface
+Purpose: Create and manage area maps with defined boundaries for flight operations.Inputs:- Area name (text)- Boundary coordinates (map interface or JSON)- Status selection (active/draft)Outputs:- Area map ID- Calculated area size- Visual boundary display- Validation statusInterface:+-----------------------------------------------------------------------++-----------------------------------------------------------------------++-----------------------------------------------------------------------+________________________________________________________________________________
+6.2 Flight Control Dashboard
+Purpose: Start, monitor, and stop flight operations.Inputs:- Area map selection (dropdown)- Start/Stop flight buttons- Abort mission buttonOutputs:- Flight status- Current flight ID- Live video feed- Real-time telemetry dataInterface:+-----------------------------------------------------------------------++-----------------------------------------------------------------------++-----------------------------------------------------------------------+________________________________________________________________________________
+6.3 Flight Telemetry View
+Purpose: Display real-time telemetry data during flight operations.Inputs:- Flight ID (auto-selected from active flight)Outputs:- Battery level- Distance traveled- Detection count- Timestamp of last updateInterface:+-----------------------------------------------------------------------++-----------------------------------------------------------------------++-----------------------------------------------------------------------+________________________________________________________________________________
+6.4 Detection Image Gallery
+Purpose: View detection images captured during a flight.Inputs:- Flight ID (from flight history)- Image filters (optional)Outputs:- Grid of detection images- Image metadata (timestamp, path)- Detection count per imageInterface:+-----------------------------------------------------------------------++-----------------------------------------------------------------------++-----------------------------------------------------------------------+________________________________________________________________________________
+6.5 Chase Event Log
+Purpose: View and manage chase event records for a flight.Inputs:- Flight ID (from flight history)- Event filters (counter measure type, outcome)Outputs:- List of chase events- Event details (start/end time, duration, outcome)- Counter measure type usedInterface:+-----------------------------------------------------------------------++-----------------------------------------------------------------------++-----------------------------------------------------------------------+________________________________________________________________________________
+6.6 Flight History
+Purpose: View historical flight records and access detailed flight information.Inputs:- Date range filter- Status filter- Search queryOutputs:- List of flights with metadata- Flight summary statistics- Navigation to detail viewsInterface:+-----------------------------------------------------------------------++-----------------------------------------------------------------------++-----------------------------------------------------------------------+________________________________________________________________________________
+7. Testing
+7.1 Test Strategy
+CategoryDescriptionToolsUnit TestsTests for individual components in isolationpytest, pytest-asyncioIntegration TestsTests for component interactions and API endpointspytest, TestClientEnd-to-End TestsTests for complete user workflowsPlaywright7.2 Unit Tests
+7.2.1 Entity Tests
+IDComponentTest FocusKey ValidationsUT-01FlightLifecycle managementState transitions (start-->stop-->abort), duration calculation, timestamp integrityUT-02AreaMapBoundary validationValid coordinates, minimum 3 points, area calculationUT-03DetectionImageImage storageValid flight reference, path validation, timestampUT-04TelemetryData constraintsBattery 0-100%, non-negative distance/detectionsUT-05ChaseEventChase lifecycleValid counter-measure types, outcome states7.2.2 Repository Tests
+IDComponentTest FocusKey ValidationsUT-06FlightRepositoryCRUD operationsCreate/read/update/delete flights, status mappingUT-07DroneRepositoryFlight & telemetry storageActive flight tracking, telemetry save/retrieve, detection imagesUT-08AreaMapRepositoryArea map persistenceBoundary storage, active map filteringUT-09TelemetryRepositoryTelemetry persistenceSave/retrieve telemetry records, flight association7.2.3 Service Tests
+IDComponentTest FocusKey ValidationsUT-10ConnectionServiceConnection managementWiFi detection, SSH connect/disconnect, mock modeUT-11DroneServiceFlight orchestrationStart/stop flight, detection integration, error handlingUT-12FlightServiceFlight data accessHistory retrieval, summary calculation, data formattingUT-13DetectionServiceDetection processProcess lifecycle, output parsing, image savingUT-14RecordingServiceVideo recordingGStreamer process management, file creationUT-15AreaMapServiceArea mapping logicBoundary validation, mapping flight initiation, area storageUT-16ChaseServiceChase orchestrationPursuit trajectory, counter-measure activation, chase logging7.2.4 Controller Tests
+IDComponentTest FocusKey ValidationsUT-17ConnectionControllerConnection endpointsWiFi/SSH status, connect/disconnect responsesUT-18DroneControllerDrone control endpointsStart/stop/abort responses, status reportingUT-19FlightControllerFlight data endpointsHistory list, flight details, 404 handlingUT-20AreaMapControllerArea map endpointsCRUD operations, mapping status responses7.2.5 Detection System Tests
+IDComponentTest FocusKey ValidationsUT-21PigeonDetectorML detectionModel loading, frame processing, detection output7.3 Integration Tests
+IDTest FocusKey ValidationsIT-01API EndpointsAll REST endpoints return correct status codes and responsesIT-02Flight FlowComplete flight cycle (connect --> start --> detect --> stop) works end-to-endIT-03Database OperationsFlight lifecycle persists correctly across servicesIT-04WebSocket CommunicationTelemetry broadcasts to all connected frontendsIT-05Service CoordinationDroneService correctly orchestrates Connection, Detection, and Recording services7.4 End-to-End Tests
+IDScenarioExpected ResultE2E-01Complete flight cycleFlight recorded with duration, detections, and videoE2E-02Connection managementConnect/disconnect flows work without errorsE2E-03Bird detection workflowDetections logged and images savedE2E-04Error recoverySystem handles connection loss and process failures gracefullyE2E-05Area mapping workflowArea boundaries defined, stored, and available for detection flights7.5 Test Environment
+ComponentSpecificationBackend Testingpytest with pytest-asyncioFrontend TestingJest with React Testing LibraryE2E TestingPlaywrightDatabaseSQLite in-memory for testsHardware SimulationMOCK_MODE flag________________________________________________________________________________
+Appendix A: API Endpoints
+A.1 Connection Endpoints
+MethodEndpointDescriptionRequest BodyResponseGET/api/connection/wifiCheck WiFi connection to drone-`{ connected: boolean, ssid?: string }`POST/api/connection/sshEstablish SSH connection to drone-`{ success: boolean, error?: string }`DELETE/api/connection/sshDisconnect SSH from drone-`{ success: boolean }`GET/api/connection/statusGet full connection status-`{ wifiConnected: boolean, sshConnected: boolean, droneReady: boolean, streamActive: boolean }`POST/api/connection/video/startStart video stream from drone-`{ success: boolean, streamUrl?: string }`POST/api/connection/video/stopStop video stream-`{ success: boolean }`A.2 Drone Control Endpoints
+MethodEndpointDescriptionRequest BodyResponseGET/api/drone/statusGet drone operational status-`{ isConnected: boolean, isFlying: boolean, mode: string, batteryLevel?: number }`POST/api/drone/startStart flight mission`{ areaMapId?: number }``{ success: boolean, flightId: string, error?: string }`POST/api/drone/stopStop flight mission gracefully-`{ success: boolean, pigeonsDetected: number, framesProcessed: number }`POST/api/drone/abortEmergency abort mission-`{ success: boolean, pigeonsDetected: number, framesProcessed: number }`POST/api/drone/return-homeCommand drone to return to home-`{ success: boolean }`GET/api/drone/telemetryGet current telemetry data-`{ mode: string, armed: boolean, location: Location, attitude: Attitude, groundspeed: number }`WS/api/drone/telemetry/streamWebSocket for real-time telemetry-Continuous telemetry updatesA.3 Flight History Endpoints
+MethodEndpointDescriptionRequest BodyResponseGET/api/flightsGet all flight records-`Flight[]`GET/api/flights/{id}Get flight by ID-`Flight`GET/api/flights/{id}/summaryGet flight summary statistics-`{ flightId: string, duration: number, avgSpeed: number, totalDetections: number }`GET/api/flights/{id}/imagesGet detection images for flight-`{ images: string[] }`GET/api/flights/{id}/recordingGet video recording path-`{ recording: string \GET/api/flights/{id}/telemetryGet telemetry history for flight-`Telemetry[]`DELETE/api/flights/{id}Delete flight record-`{ success: boolean }`A.4 Area Map Endpoints
+MethodEndpointDescriptionRequest BodyResponseGET/api/areasGet all area maps-`AreaMap[]`GET/api/areas/{id}Get area map by ID-`AreaMap`POST/api/areasCreate new area map`{ name: string, boundaries: Coordinate[], homePoint: Coordinate }``{ success: boolean, areaId: number }`PUT/api/areas/{id}Update area map`{ name?: string, boundaries?: Coordinate[], homePoint?: Coordinate }``{ success: boolean }`DELETE/api/areas/{id}Delete area map-`{ success: boolean }`GET/api/areas/{id}/flightsGet flights for area map-`Flight[]`POST/api/areas/mapping/startStart area mapping flight`{ name: string }``{ success: boolean, mappingId: number }`GET/api/areas/mapping/statusGet mapping flight status-`{ active: boolean, progress?: number, boundaries?: Coordinate[] }`A.5 Detection Endpoints
+MethodEndpointDescriptionRequest BodyResponseGET/api/detection/statusGet detection service status-`{ running: boolean, flightId?: number, detectionCount: number }`GET/api/detection/configGet detection configuration-`{ confidenceThreshold: number, modelPath: string }`PUT/api/detection/configUpdate detection configuration`{ confidenceThreshold?: number }``{ success: boolean }`A.6 Chase Event Endpoints
+MethodEndpointDescriptionRequest BodyResponseGET/api/flights/{id}/chasesGet chase events for flight-`ChaseEvent[]`GET/api/chases/{id}Get chase event details-`ChaseEvent`________________________________________________________________________________
+Appendix B: File Structure
+scarecrow_drone/
+├── scarecrow-drone/                    # Main application
+│   ├── backend/
+│   │   ├── app.py                      # FastAPI application entry point
+│   │   ├── controllers/                # API route handlers
+│   │   ├── services/                   # Business logic layer
+│   │   ├── database/                   # Data access layer (repositories)
+│   │   ├── dto/                        # Data transfer objects
+│   │   └── models/                     # Entity models
+│   ├── database/
+│   │   ├── database.py                 # Database schema initialization
+│   │   └── scarecrow.db                # SQLite database file
+│   └── frontend/
+│       ├── public/                     # Static assets
+│       ├── src/
+│       │   ├── pages/                  # Page components
+│       │   ├── components/             # Reusable UI components
+│       │   ├── services/               # API client
+│       │   ├── types/                  # TypeScript definitions
+│       │   └── hooks/                  # Custom React hooks
+│       └── package.json
+├── live_detection/                     # Detection module
+│   ├── pigeon_detector.py              # PigeonDetector class
+│   ├── best_v4.pt                      # YOLOv8 trained model
+│   └── recordings/                     # Detection video recordings
+├── pigeon-detection/                   # ML Training module
+│   ├── src/                            # Training scripts
+│   ├── data/                           # Training datasets (train/valid/test)
+│   ├── models/                         # Saved model weights
+│   └── runs/                           # Training run outputs
+├── drone_scripts/                      # Drone control scripts
+├── tests/                              # Test suite
+│   ├── backend/unit/                   # Unit tests
+│   ├── backend/integration/            # Integration tests
+│   ├── detection/                      # Detection tests
+│   └── e2e/                            # End-to-end tests
+├── recordings/                         # Flight video recordings
+├── docker-compose.yml
+├── Dockerfile
+├── requirements.txt
+└── README.md

@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx md-to-pdf:*)",
+      "Bash(npx md-to-docx:*)",
+      "Bash(pandoc:*)",
+      "Bash(where:*)",
+      "Bash(winget install:*)",
+      "Bash(\"C:\\\\Program Files\\\\Pandoc\\\\pandoc.exe\" ADD_Scarecrow_Drone.md -o ADD_Scarecrow_Drone.docx)",
+      "Bash(cmd /c \"cd /d \"\"c:\\\\projects\\\\finale project\\\\scarecrow_drone\"\" && \"\"C:\\\\Program Files\\\\Pandoc\\\\pandoc.exe\"\" ADD_Scarecrow_Drone.md -o ADD_Scarecrow_Drone.docx\")",
+      "Bash(cmd /c \"dir \"\"c:\\\\projects\\\\finale project\\\\scarecrow_drone\\\\ADD_Scarecrow_Drone.docx\"\"\")",
+      "Bash(cmd /c \"cd /d \"\"c:\\\\projects\\\\finale project\\\\scarecrow_drone\"\" && dir *.docx 2>nul && dir ADD_Scarecrow* 2>nul\")",
+      "Bash(cmd /c \"cd /d \"\"c:\\\\projects\\\\finale project\\\\scarecrow_drone\"\" && dir ADD*\")",
+      "Bash(cmd /c \"cd /d \"\"c:\\\\projects\\\\finale project\\\\scarecrow_drone\"\" && dir /b\")",
+      "Bash(cmd /c \"where pandoc\")",
+      "Bash(cmd /c \"dir \"\"C:\\\\Program Files\\\\Pandoc\"\"\")",
+      "Bash(cmd /c \"dir \"\"C:\\\\Users\\\\tomer\\\\AppData\\\\Local\\\\Pandoc\"\"\")",
+      "Bash(powershell:*)",
+      "Bash(npx:*)",
+      "Bash(pip install:*)",
+      "Bash(python convert_to_docx.py:*)",
+      "Bash(\"C:/Users/tomer/AppData/Local/Pandoc/pandoc.exe\" ADD_Scarecrow_Drone.md -o ADD_Scarecrow_Drone.docx --from markdown --to docx)",
+      "Bash(\"C:/Users/tomer/AppData/Local/Pandoc/pandoc.exe\" ADD_Scarecrow_Drone.md -o ADD_Scarecrow_Drone.docx --from markdown --to docx --standalone --table-of-contents --toc-depth=3)",
+      "Bash(python create_professional_docx.py:*)",
+      "Bash(dir:*)",
+      "Bash(python ascii_to_images.py:*)",
+      "Bash(python:*)"
+    ]
+  }
+}
